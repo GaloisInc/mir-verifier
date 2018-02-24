@@ -504,6 +504,10 @@ evalCast' ck ty1 e ty2  =
       (M.Unsize, M.TyRef (M.TyArray _ _) M.Immut, M.TyRef (M.TySlice _) M.Mut) ->
          fail "Cannot cast an immutable array to a mutable slice"
 
+      -- Trait object creation.
+      (M.Unsize, M.TyRef baseType _, M.TyRef (M.TyDynamic traitName) _) ->
+        mkTraitObject traitName baseType e
+
       _ -> fail $ "unimplemented cast: " ++ (show ck) ++ " " ++ (show ty1) ++ " as " ++ (show ty2)
 
 evalCast :: M.CastKind -> M.Operand -> M.Ty -> MirGenerator h s ret (MirExp s)
@@ -511,7 +515,30 @@ evalCast ck op ty = do
     e <- evalOperand op
     evalCast' ck (M.typeOf op) e ty
 
+-- | Create a new trait object for the given trait for the given
+-- value. Fails if the value does not implement the trait.
+mkTraitObject :: M.DefId -> M.Ty -> MirExp s -> MirGenerator h s ret (MirExp s)
+mkTraitObject traitName baseType (MirExp baseTyr baseValue) = do
+  (Some timpls) <- traitImplsLookup traitName
+  case Map.lookup (typeName baseType) (timpls^.vtables) of
+    Nothing -> fail $ Text.unpack $ Text.unwords ["Error while creating a trait object: type ", typeName baseType," does not implement trait ", traitName]
+    Just vtbl ->
+      let ctxr = Ctx.empty Ctx.:> CT.AnyRepr Ctx.:> (timpls^.vtableTyRepr)
+      in return $
+      MirExp (CT.StructRepr ctxr)
+      (R.App $ E.MkStruct ctxr (Ctx.empty Ctx.:> (R.App $ E.PackAny baseTyr baseValue)Ctx.:> vtbl))
 
+traitImplsLookup :: M.DefId -> MirGenerator h s ret (Some (TraitImpls s))
+traitImplsLookup traitName = do
+  (TraitMap mp) <- use traitMap
+  case Map.lookup traitName mp of
+    Nothing -> fail $ Text.unpack $ Text.unwords ["Trait does not exist ", traitName]
+    Just timpls -> return timpls
+
+-- | TODO: implement. Returns the name of the name, as seen MIR
+typeName :: M.Ty -> M.DefId
+typeName = undefined
+    
 -- Expressions: evaluation of Rvalues and Lvalues
 
 evalRefLvalue :: M.Lvalue -> MirGenerator h s ret (MirExp s)
@@ -984,10 +1011,23 @@ doCall funid cargs cdest = do
                 assignLvExp dest_lv Nothing (MirExp fret ret_e)
                 jumpToBlock jdest
               _ -> fail $ "type error in call: args " ++ (show ctx) ++ " vs function params " ++ (show fargctx) ++ " while calling " ++ (show funid)
-
       (_, Just (dest_lv, jdest)) -> doCustomCall funid cargs dest_lv jdest
 
       _ -> fail "bad dest"
+
+-- Method/trait calls
+methodCall :: HasCallStack => Text.Text -> Text.Text -> M.Operand -> [M.Operand] -> Maybe (M.Lvalue, M.BasicBlockInfo) -> MirGenerator h s ret a
+methodCall traitName methodName traitObject args dest = do
+  (Some tis) <- traitImplsLookup traitName
+  case Map.lookup methodName $ tis^.methodIndex of
+    Nothing -> fail $ Text.unpack $ Text.unwords $ ["Error while translating a method call: no such method ", methodName, " in trait ", traitName]
+    Just (Some midx) ->
+      -- 1. translate `traitObject` -- should be a Ref to a tuple
+      -- 2. the first element should be Ref Any. This is the base value. Unpack the Any behind the Ref and stick it back into a Ref.
+      -- 3. the second element should be a Struct that matches the context repr in `tis^.vtableTyRepr`.
+      -- 4. index into that struct with `midx` and retrieve a FunctionHandle value
+      -- 5. Call the FunctionHandle passing the reference to the base value (step 2), and the rest of the arguments (translated)
+      undefined
 
 transTerminator :: HasCallStack => M.Terminator -> CT.TypeRepr ret -> MirGenerator h s ret a
 transTerminator (M.Goto bbi) _ =
@@ -1000,8 +1040,12 @@ transTerminator (M.Return) tr =
 transTerminator (M.DropAndReplace dlv dop dtarg _) _ = do
     transStatement (M.Assign dlv (M.Use dop) "<dummy pos>")
     jumpToBlock dtarg
-transTerminator (M.Call (M.OpConstant (M.Constant _ (M.Value (M.ConstFunction funid funsubsts))))  cargs cretdest _) _ =
-    doCall funid cargs cretdest  -- cleanup ignored
+transTerminator (M.Call (M.OpConstant (M.Constant _ (M.Value (M.ConstFunction funid funsubsts)))) cargs cretdest _) _ =
+    case (funsubsts, cargs) of
+      (Just (M.TyDynamic traitName) : _, tobj:args) -> -- this is a method call on a trait object
+        methodCall traitName funid tobj cargs cretdest
+      _ -> -- this is a normal function call
+        doCall funid cargs cretdest  -- cleanup ignored
 transTerminator (M.Assert cond expected msg target cleanup) _ =
     jumpToBlock target -- FIXME! asserts are ignored; is this the right thing to do? NO!
 transTerminator (M.Resume) tr =
@@ -1064,9 +1108,9 @@ buildFnState body argvars = do
     vm' <- buildIdentMapRegs body argvars
     varMap %= Map.union vm'
 
-initFnState :: AdtMap -> TraitMap -> [(Text.Text, M.Ty)] -> CT.CtxRepr args -> Ctx.Assignment (R.Atom s) args -> Map.Map Text.Text MirHandle -> FnState s
-initFnState am tm vars argsrepr args hmap =
-    FnState (go (reverse vars) argsrepr args Map.empty) (Map.empty) hmap am tm
+initFnState :: AdtMap -> Some TraitMap -> [(Text.Text, M.Ty)] -> CT.CtxRepr args -> Ctx.Assignment (R.Atom s) args -> Map.Map Text.Text MirHandle -> FnState s
+initFnState am (Some tm) vars argsrepr args hmap =
+    FnState (go (reverse vars) argsrepr args Map.empty) (Map.empty) hmap am undefined --tm
     where go :: [(Text.Text, M.Ty)] -> CT.CtxRepr args -> Ctx.Assignment (R.Atom s) args -> VarMap s -> VarMap s
           go [] ctx _ m
             | Ctx.null ctx = m
@@ -1126,7 +1170,7 @@ mkHandleMap halloc fns = Map.fromList <$> (mapM (mkHandle halloc) fns) where
 -- transDefine: make CFG using genDefn (with type info coming from above), using initial state from initState; return (fname, CFG)
 
 
-transDefine :: forall h. HasCallStack => AdtMap -> TraitMap -> Map.Map Text.Text MirHandle -> M.Fn -> ST h (Text.Text, Core.AnyCFG MIR)
+transDefine :: forall h. HasCallStack => AdtMap -> Some TraitMap -> Map.Map Text.Text MirHandle -> M.Fn -> ST h (Text.Text, Core.AnyCFG MIR)
 transDefine am tm hmap fn@(M.Fn fname fargs _ _) =
   case (Map.lookup fname hmap) of
     Nothing -> fail "bad handle!!"
@@ -1148,11 +1192,11 @@ transCollection col halloc = do
     let am = Map.fromList [ (nm, vs) | M.Adt nm vs <- col^.M.adts ]
     hmap <- mkHandleMap halloc (col^.M.functions)
     let tm = buildTraitMap col hmap
-    pairs <- mapM (transDefine am tm hmap) (col^.M.functions)
+    pairs <- mapM (transDefine am (Some tm) hmap) (col^.M.functions)
     return $ Map.fromList pairs
 
 -- | Build the mapping from traits and types that implement them to VTables
-buildTraitMap :: M.Collection -> Map.Map Text.Text MirHandle -> TraitMap
+buildTraitMap :: M.Collection -> Map.Map Text.Text MirHandle -> TraitMap s
 buildTraitMap col hmap = TraitMap $ Map.fromList [(tname, mkTraitImplementations col hmap trait) | trait@(M.Trait tname _) <- col^.M.traits]
 
 -- | Construct 'TraitImpls' for each trait. Involves finding data

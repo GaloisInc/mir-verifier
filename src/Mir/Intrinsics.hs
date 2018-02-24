@@ -412,7 +412,7 @@ type LabelMap s = Map.Map BasicBlockInfo (Label s)
 
 type AdtMap = Map.Map Text.Text [Variant]
 
-data TraitMap = forall s. TraitMap (Map.Map Text.Text {- ^ trait name-} (Some (TraitImpls s)))
+data TraitMap s = TraitMap (Map.Map Text.Text {- ^ trait name-} (Some (TraitImpls s)))
 data TraitImpls s ctx = TraitImpls
   {_vtableTyRepr :: TypeRepr (StructType ctx)
    -- ^ Describes the types of Crucible structs that store the VTable
@@ -445,7 +445,7 @@ data FnState s = FnState { _varMap :: !(VarMap s),
                            _labelMap :: !(LabelMap s),
                            _handleMap :: !HandleMap,
                            _adtMap :: !AdtMap,
-                           _traitMap :: !TraitMap
+                           _traitMap :: !(TraitMap s)
                          }
 
 
