@@ -2792,7 +2792,7 @@ Cast{_cck = Unsize,
 ** Tasks [1/6]
 *** TODO Figure out how to resolve the type variable mismatch in TraitMap
     - see Trans.initFnState. The commented out `tm` gets a type mismatch on the `s` parameter. (Because of Some TraitMap)
-    - Can't pass non-Some TraitMap (TraitMap s) because the (transitive) call of initFnState, transDefine passes it to FunctionDef that explicitly quantifies forall s. 
+    - Can't pass non-Some TraitMap (TraitMap s) because the (transitive) caller of initFnState, transDefine passes it to FunctionDef that explicitly quantifies forall s. 
     - And we really need the `s` parameter for TraitMap because it stores some Crucible expressions (VTables)
     - Probably need RobD to figure it out.
 *** TODO Implement Trans.typeName

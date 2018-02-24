@@ -1110,7 +1110,7 @@ buildFnState body argvars = do
 
 initFnState :: AdtMap -> Some TraitMap -> [(Text.Text, M.Ty)] -> CT.CtxRepr args -> Ctx.Assignment (R.Atom s) args -> Map.Map Text.Text MirHandle -> FnState s
 initFnState am (Some tm) vars argsrepr args hmap =
-    FnState (go (reverse vars) argsrepr args Map.empty) (Map.empty) hmap am undefined --tm
+    FnState (go (reverse vars) argsrepr args Map.empty) (Map.empty) hmap am tm
     where go :: [(Text.Text, M.Ty)] -> CT.CtxRepr args -> Ctx.Assignment (R.Atom s) args -> VarMap s -> VarMap s
           go [] ctx _ m
             | Ctx.null ctx = m
