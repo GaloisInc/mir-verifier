@@ -22,7 +22,7 @@ impl From<Scalar64> for Int512 {
     fn from(x: Scalar64) -> Int512 {
         let mut acc = Int512::from(0_i32);
         for i in 0..5 {
-            acc = acc.bitor(Int512::from(x.0[i]).shl(52 * i as u32));
+            acc = acc | (Int512::from(x.0[i]) << (52 * i as u32));
         }
         acc
     }
@@ -33,7 +33,7 @@ impl From<Int512> for Scalar64 {
         let mut acc = Scalar64([0; 5]);
         let mask: Int512 = Int512::from((1_u64 << 52) - 1);
         for i in 0..5 {
-            acc.0[i] = u64::from(x.shr(52 * i as u32).bitand(mask));
+            acc.0[i] = u64::from((x >> (52 * i as u32)) & mask);
         }
         acc
     }
@@ -43,7 +43,7 @@ impl From<[u8; 32]> for Int512 {
     fn from(x: [u8; 32]) -> Int512 {
         let mut acc = Int512::from(0_i32);
         for i in 0..5 {
-            acc = acc.bitor(Int512::from(x[i]).shl(8 * i as u32));
+            acc = acc | (Int512::from(x[i]) << (8 * i as u32));
         }
         acc
     }
@@ -54,16 +54,16 @@ impl From<Int512> for [u8; 32] {
         let mut acc = [0; 32];
         let mask: Int512 = Int512::from((1_u64 << 8) - 1);
         for i in 0..32 {
-            acc[i] = u8::from(x.shr(8 * i as u32).bitand(mask));
+            acc[i] = u8::from((x >> 8 * i as u32) & mask);
         }
         acc
     }
 }
 
 pub fn L() -> Int512 {
-    Int512::from(1_i32).shl(252).add(
-        Int512::from(0x5812631a5cf5d3ed_u64)
-            .bitor(Int512::from(0x14def9dea2f79cd6_u64).shl(64)))
+    (Int512::from(1_i32) << 252) +
+        (Int512::from(0x5812631a5cf5d3ed_u64) |
+         (Int512::from(0x14def9dea2f79cd6_u64) << 64))
 }
 
 /// Check if an integer is in the range `0 .. L`.
@@ -213,7 +213,7 @@ fn f(_w : u64 ) -> bool {
         //      2. y == a + b  OR  y == a + b - L
         // This implies the original claim because we already know 0 <= a + b < 2 * L.
         crucible_assert!(is_valid(y));
-        crucible_assert!(y == a.add(b) || y == a.add(b).sub(L()));
+        crucible_assert!(y == a + b || y == a + b - L());
     }
 
     return true;
@@ -227,7 +227,7 @@ const ARG: u64 = 20;
 
 mod constants {
     use Scalar64;
-    
+
     /// `L` is the order of base point, i.e. 2^252 + 27742317777372353535851937790883648493
     pub(crate) const L: Scalar64 = Scalar64([ 0x0002631a5cf5d3ed, 0x000dea2f79cd6581, 0x000000000014def9, 0x0000000000000000, 0x0000100000000000 ]);
 
@@ -581,12 +581,10 @@ mod int512 {
                 pub fn $op(self, other: Int512) -> Int512 { $op(self, other) }
             }
 
-            /*
             impl $Op<Int512> for Int512 {
                 type Output = Int512;
                 fn $op(self, other: Int512) -> Int512 { $op(self, other) }
             }
-            */
         };
     }
     binop!(Add, add);
@@ -606,12 +604,10 @@ mod int512 {
                 pub fn $op(self, bits: u32) -> Int512 { $op(self, bits) }
             }
 
-            /*
             impl $Op<u32> for Int512 {
                 type Output = Int512;
                 fn $op(self, bits: u32) -> Int512 { $op(self, bits) }
             }
-            */
         };
     }
     shift_op!(Shl, shl);
