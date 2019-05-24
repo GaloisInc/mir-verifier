@@ -1,16 +1,5 @@
-//! Arithmetic mod \\(2\^{252} + 27742317777372353535851937790883648493\\)
-//! with five \\(52\\)-bit unsigned limbs.
-//!
-//! \\(51\\)-bit limbs would cover the desired bit range (\\(253\\)
-//! bits), but isn't large enough to reduce a \\(512\\)-bit number with
-//! Montgomery multiplication, so \\(52\\) bits is used instead.  To see
-//! that this is safe for intermediate results, note that the largest
-//! limb in a \\(5\times 5\\) product of \\(52\\)-bit limbs will be
-//!
-//! ```text
-//! (0xfffffffffffff^2) * 5 = 0x4ffffffffffff60000000000005 (107 bits).
-//! ```
 extern crate core;
+
 #[macro_use] mod crucible;
 mod scalar;
 mod constants;
@@ -162,24 +151,6 @@ fn f(_w : u64 ) -> bool {
         crucible_assert!(is_valid(y));
         crucible_assert!(y == a + b || y == a + b - L());
     }
-
-    /*
-    // Scalar52::sub is a correct implemnetation of subtraction modulo L.
-    {
-        let a = Int512::symbolic("sub_a");
-        let b = Int512::symbolic("sub_b");
-        crucible_assume!(is_valid(a));
-        crucible_assume!(is_valid(b));
-
-        let s_a = Scalar52::from(a);
-        let s_b = Scalar52::from(b);
-        let s_y = Scalar52::sub(&s_a, &s_b);
-
-        let y = Int512::from(s_y);
-        crucible_assert!(is_valid(y));
-        crucible_assert!(y == a - b || y == a - b + L());
-    }
-    */
 
     return true;
 }
