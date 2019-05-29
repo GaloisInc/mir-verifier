@@ -1,16 +1,3 @@
-// SCW: from https://github.com/rust-lang/rust/blob/master/src/libcore/ops/try.rs
-// 4/15/19
-
-/*
-
-
-#[cfg(iter)]
-#[cfg(mem_replace)]
-
-*/
-
-#![stable(feature = "rust1", since = "1.0.0")]
-    
 //! Optional values.
 //!
 //! Type [`Option`] represents an optional value: every [`Option`]
@@ -146,23 +133,17 @@
 //! [`Box<T>`]: ../../std/boxed/struct.Box.html
 //! [`i32`]: ../../std/primitive.i32.html
 
+#![stable(feature = "rust1", since = "1.0.0")]
+
 #[cfg(iter)]
 use iter::{FromIterator, FusedIterator, TrustedLen};
-
-#[cfg(hint)]    
-use hint::*;
-
-#[cfg(mem_replace)]
-use core::mem::*;
-
-
-use core::ops::Deref;
-    
-use core::ops::{self};
-
+#[cfg(mem)]
+use {hint, mem};
+use ops::{self, Deref};
 use pin::Pin;
 
-use core::intrinsics::{self};
+//SCW
+use core::intrinsics;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -170,8 +151,8 @@ use core::intrinsics::{self};
 // which basically means it must be `Option`.
 
 /// The `Option` type. See [the module level documentation](index.html) for more.
-    #[derive(Clone)]
-    // SCW: REMOVE PartialOrd, Ord as requires "Promoted"
+//#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Option<T> {
     /// No value
@@ -182,17 +163,14 @@ pub enum Option<T> {
     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
 }
 
-        
 /////////////////////////////////////////////////////////////////////////////
 // Type implementation
 /////////////////////////////////////////////////////////////////////////////
 
-    use option::Option::*;    
-    
+// SCW
+use option::Option::*;    
+
 impl<T> Option<T> {
-
-
-
     /////////////////////////////////////////////////////////////////////////
     // Querying the contained values
     /////////////////////////////////////////////////////////////////////////
@@ -210,6 +188,7 @@ impl<T> Option<T> {
     /// ```
     ///
     /// [`Some`]: #variant.Some
+    #[must_use]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_some(&self) -> bool {
@@ -232,6 +211,7 @@ impl<T> Option<T> {
     /// ```
     ///
     /// [`None`]: #variant.None
+    #[must_use]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_none(&self) -> bool {
@@ -292,8 +272,9 @@ impl<T> Option<T> {
         }
     }
 
-    #[cfg(pin)]
+
     /// Converts from `Pin<&Option<T>>` to `Option<Pin<&T>>`
+    #[cfg(pin)]  // SCW: We have Pin, but still E0307
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_ref<'a>(self: Pin<&'a Option<T>>) -> Option<Pin<&'a T>> {
@@ -302,8 +283,8 @@ impl<T> Option<T> {
         }
     }
 
-    #[cfg(pin)]
     /// Converts from `Pin<&mut Option<T>>` to `Option<Pin<&mut T>>`
+    #[cfg(pin)]  // SCW: We have Pin, but still E0307   
     #[inline]
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_mut<'a>(self: Pin<&'a mut Option<T>>) -> Option<Pin<&'a mut T>> {
@@ -346,7 +327,6 @@ impl<T> Option<T> {
         }
     }
 
-    
     /// Moves the value `v` out of the `Option<T>` if it is [`Some(v)`].
     ///
     /// In general, because this function may panic, its use is discouraged.
@@ -376,11 +356,10 @@ impl<T> Option<T> {
     pub fn unwrap(self) -> T {
         match self {
             Some(val) => val,
-            None => unsafe { intrinsics::abort() }
-//            None => panic!("called `Option::unwrap()` on a `None` value"),
+            None => panic!("called `Option::unwrap()` on a `None` value"),
         }
     }
-   
+
     /// Returns the contained value or a default.
     ///
     /// Arguments passed to `unwrap_or` are eagerly evaluated; if you are passing
@@ -570,7 +549,6 @@ impl<T> Option<T> {
     /// assert_eq!(x.iter().next(), None);
     /// ```
     #[inline]
-    #[cfg(iter)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
         Iter { inner: Item { opt: self.as_ref() } }
@@ -592,7 +570,6 @@ impl<T> Option<T> {
     /// assert_eq!(x.iter_mut().next(), None);
     /// ```
     #[inline]
-    #[cfg(iter)]    
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<T> {
         IterMut { inner: Item { opt: self.as_mut() } }
@@ -812,7 +789,6 @@ impl<T> Option<T> {
     /// assert_eq!(x, Some(7));
     /// ```
     #[inline]
-    #[cfg(hint)]
     #[stable(feature = "option_entry", since = "1.20.0")]
     pub fn get_or_insert(&mut self, v: T) -> &mut T {
         match *self {
@@ -822,7 +798,7 @@ impl<T> Option<T> {
 
         match *self {
             Some(ref mut v) => v,
-            None => unsafe { hint::unreachable_unchecked() },
+            None => unsafe { intrinsics::abort() } // unsafe { hint::unreachable_unchecked() },
         }
     }
 
@@ -846,7 +822,6 @@ impl<T> Option<T> {
     /// assert_eq!(x, Some(7));
     /// ```
     #[inline]
-    #[cfg(hint)]
     #[stable(feature = "option_entry", since = "1.20.0")]
     pub fn get_or_insert_with<F: FnOnce() -> T>(&mut self, f: F) -> &mut T {
         match *self {
@@ -856,7 +831,7 @@ impl<T> Option<T> {
 
         match *self {
             Some(ref mut v) => v,
-            None => unsafe { hint::unreachable_unchecked() },
+            None => unsafe { intrinsics::abort() } // unsafe { hint::unreachable_unchecked() },
         }
     }
 
@@ -881,8 +856,8 @@ impl<T> Option<T> {
     /// assert_eq!(x, None);
     /// assert_eq!(y, None);
     /// ```
+    #[cfg(mem)]
     #[inline]
-    #[cfg(mem_replace)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn take(&mut self) -> Option<T> {
         mem::replace(self, None)
@@ -907,15 +882,14 @@ impl<T> Option<T> {
     /// assert_eq!(x, Some(3));
     /// assert_eq!(old, None);
     /// ```
+    #[cfg(mem)]    
     #[inline]
-    #[cfg(mem_replace)]    
     #[stable(feature = "option_replace", since = "1.31.0")]
     pub fn replace(&mut self, value: T) -> Option<T> {
         mem::replace(self, Some(value))
     }
 }
 
-/*
 impl<T: Copy> Option<&T> {
     /// Maps an `Option<&T>` to an `Option<T>` by copying the contents of the
     /// option.
@@ -952,8 +926,8 @@ impl<T: Copy> Option<&mut T> {
     pub fn copied(self) -> Option<T> {
         self.map(|&mut t| t)
     }
-}*/
-/*
+}
+
 impl<T: Clone> Option<&T> {
     /// Maps an `Option<&T>` to an `Option<T>` by cloning the contents of the
     /// option.
@@ -990,7 +964,7 @@ impl<T: Clone> Option<&mut T> {
     pub fn cloned(self) -> Option<T> {
         self.map(|t| t.clone())
     }
-}*/
+}
 
 impl<T: Default> Option<T> {
     /// Returns the contained value or a default
@@ -1031,7 +1005,6 @@ impl<T: Default> Option<T> {
     }
 }
 
-#[cfg(deref)]    
 #[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
 impl<T: Deref> Option<T> {
     /// Converts from `&Option<T>` to `Option<&T::Target>`.
@@ -1074,8 +1047,7 @@ impl<T, E> Option<Result<T, E>> {
 #[inline(never)]
 #[cold]
 fn expect_failed(msg: &str) -> ! {
-    unsafe { intrinsics::abort() }
-//    panic!("{}", msg)
+    panic!("{}", msg)
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1083,32 +1055,12 @@ fn expect_failed(msg: &str) -> ! {
 /////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T:PartialEq> PartialEq for Option<T> {
-        fn eq(&self, other: &Option<T>) -> bool {
-            match *self {
-                None => match *other {
-                    None => true,
-                    Some(_) => false
-                },
-                Some(ref x) => match *other {
-                    None => false,
-                    Some(ref y) =>x.eq(y)
-                }
-            }
-        }
-                        
-    }
-    
-#[stable(feature = "rust1", since = "1.0.0")]    
-impl<T:Eq> Eq for Option<T> {}
-    
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Option<T> {
     /// Returns [`None`][Option::None].
     #[inline]
     fn default() -> Option<T> { None }
 }
-    
+
 #[cfg(iter)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> IntoIterator for Option<T> {
@@ -1134,7 +1086,7 @@ impl<T> IntoIterator for Option<T> {
     }
 }
 
-#[cfg(iter)]    
+#[cfg(iter)]
 #[stable(since = "1.4.0", feature = "option_iter")]
 impl<'a, T> IntoIterator for &'a Option<T> {
     type Item = &'a T;
@@ -1145,7 +1097,7 @@ impl<'a, T> IntoIterator for &'a Option<T> {
     }
 }
 
-#[cfg(iter)]    
+#[cfg(iter)]
 #[stable(since = "1.4.0", feature = "option_iter")]
 impl<'a, T> IntoIterator for &'a mut Option<T> {
     type Item = &'a mut T;
@@ -1156,14 +1108,12 @@ impl<'a, T> IntoIterator for &'a mut Option<T> {
     }
 }
 
-
 #[stable(since = "1.12.0", feature = "option_from")]
 impl<T> From<T> for Option<T> {
     fn from(val: T) -> Option<T> {
         Some(val)
     }
 }
-
 
 #[stable(feature = "option_ref_from_ref_option", since = "1.30.0")]
 impl<'a, T> From<&'a Option<T>> for Option<&'a T> {
@@ -1182,13 +1132,14 @@ impl<'a, T> From<&'a mut Option<T>> for Option<&'a mut T> {
 /////////////////////////////////////////////////////////////////////////////
 // The Option Iterators
 /////////////////////////////////////////////////////////////////////////////
-/*
-    
-#[derive(Clone, Debug)]
+
+//#[derive(Clone, Debug)]
+#[derive(Clone)]
 struct Item<A> {
     opt: Option<A>
 }
 
+#[cfg(iter)]
 impl<A> Iterator for Item<A> {
     type Item = A;
 
@@ -1206,6 +1157,7 @@ impl<A> Iterator for Item<A> {
     }
 }
 
+#[cfg(iter)]
 impl<A> DoubleEndedIterator for Item<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
@@ -1213,8 +1165,12 @@ impl<A> DoubleEndedIterator for Item<A> {
     }
 }
 
+#[cfg(iter)]
 impl<A> ExactSizeIterator for Item<A> {}
+#[cfg(iter)]
 impl<A> FusedIterator for Item<A> {}
+
+#[cfg(iter)]
 unsafe impl<A> TrustedLen for Item<A> {}
 
 /// An iterator over a reference to the [`Some`] variant of an [`Option`].
@@ -1227,9 +1183,10 @@ unsafe impl<A> TrustedLen for Item<A> {}
 /// [`Some`]: enum.Option.html#variant.Some
 /// [`Option::iter`]: enum.Option.html#method.iter
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug)]
+//#[derive(Debug)]
 pub struct Iter<'a, A: 'a> { inner: Item<&'a A> }
 
+#[cfg(iter)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> Iterator for Iter<'a, A> {
     type Item = &'a A;
@@ -1240,21 +1197,26 @@ impl<'a, A> Iterator for Iter<'a, A> {
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
+#[cfg(iter)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> DoubleEndedIterator for Iter<'a, A> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a A> { self.inner.next_back() }
 }
 
+#[cfg(iter)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> ExactSizeIterator for Iter<'_, A> {}
 
+#[cfg(iter)]
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A> FusedIterator for Iter<'_, A> {}
 
+#[cfg(iter)]
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A> TrustedLen for Iter<'_, A> {}
 
+#[cfg(iter)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> Clone for Iter<'_, A> {
     #[inline]
@@ -1273,9 +1235,10 @@ impl<A> Clone for Iter<'_, A> {
 /// [`Some`]: enum.Option.html#variant.Some
 /// [`Option::iter_mut`]: enum.Option.html#method.iter_mut
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug)]
+//#[derive(Debug)]
 pub struct IterMut<'a, A: 'a> { inner: Item<&'a mut A> }
 
+#[cfg(iter)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> Iterator for IterMut<'a, A> {
     type Item = &'a mut A;
@@ -1286,17 +1249,22 @@ impl<'a, A> Iterator for IterMut<'a, A> {
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
+#[cfg(iter)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> DoubleEndedIterator for IterMut<'a, A> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut A> { self.inner.next_back() }
 }
 
+#[cfg(iter)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> ExactSizeIterator for IterMut<'_, A> {}
 
+#[cfg(iter)]
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A> FusedIterator for IterMut<'_, A> {}
+
+#[cfg(iter)]
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A> TrustedLen for IterMut<'_, A> {}
 
@@ -1309,10 +1277,12 @@ unsafe impl<A> TrustedLen for IterMut<'_, A> {}
 /// [`Option`]: enum.Option.html
 /// [`Some`]: enum.Option.html#variant.Some
 /// [`Option::into_iter`]: enum.Option.html#method.into_iter
-#[derive(Clone, Debug)]
+#[derive(Clone)]
+//#[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<A> { inner: Item<A> }
 
+#[cfg(iter)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> Iterator for IntoIter<A> {
     type Item = A;
@@ -1323,18 +1293,22 @@ impl<A> Iterator for IntoIter<A> {
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
+#[cfg(iter)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> DoubleEndedIterator for IntoIter<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.inner.next_back() }
 }
 
+#[cfg(iter)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> ExactSizeIterator for IntoIter<A> {}
 
+#[cfg(iter)]
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A> FusedIterator for IntoIter<A> {}
 
+#[cfg(iter)]
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<A> TrustedLen for IntoIter<A> {}
 
@@ -1342,7 +1316,7 @@ unsafe impl<A> TrustedLen for IntoIter<A> {}
 // FromIterator
 /////////////////////////////////////////////////////////////////////////////
 
-#[cfg(iter)]    
+#[cfg(iter)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// Takes each element in the [`Iterator`]: if it is [`None`][Option::None],
@@ -1453,19 +1427,16 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
         }
     }
 }
-*/
 
 /// The error type that results from applying the try operator (`?`) to a `None` value. If you wish
 /// to allow `x?` (where `x` is an `Option<T>`) to be converted into your error type, you can
 /// implement `impl From<NoneError>` for `YourErrorType`. In that case, `x?` within a function that
 /// returns `Result<_, YourErrorType>` will translate a `None` value into an `Err` result.
 #[unstable(feature = "try_trait", issue = "42327")]
-#[derive(Clone, PartialEq, PartialOrd, Ord)]
+//#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct NoneError;
 
-#[stable(feature = "rust1", since = "1.0.0")]    
-impl Eq for NoneError {}
-    
 #[unstable(feature = "try_trait", issue = "42327")]
 impl<T> ops::Try for Option<T> {
     type Ok = T;
