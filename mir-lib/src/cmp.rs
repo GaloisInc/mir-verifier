@@ -21,12 +21,12 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use self::Ordering::*;
-use marker::Sized;
+/* use marker::Sized;
 use option::Option;
 use option::Option::*;
 use ops::FnOnce;
 use std::ops::Neg;
-
+*/
 
 /// Trait for equality comparisons which are [partial equivalence
 /// relations](http://en.wikipedia.org/wiki/Partial_equivalence_relation).
@@ -295,7 +295,7 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> { _field: ::marker::PhantomData<T> }
 pub enum Ordering {
     /// An ordering where a compared value is less than another.
     #[stable(feature = "rust1", since = "1.0.0")]
-    Less = -1,
+    Less = 400,
     /// An ordering where a compared value is equal to another.
     #[stable(feature = "rust1", since = "1.0.0")]
     Equal = 0,

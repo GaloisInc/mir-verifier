@@ -3,12 +3,13 @@ use fmt;
 #[cfg(hash)]
 use hash::{Hash, Hasher};
 
+/*
+use prelude;
 use marker::Sized;
-use cmp::{PartialEq,PartialOrd,Ord,Eq};
+use cmp::{PartialEq,PartialOrd,Eq};
 use option::Option;
 use option::Option::*;
-
-use super::super::option;
+ */
 
 /// An unbounded range (`..`).
 ///

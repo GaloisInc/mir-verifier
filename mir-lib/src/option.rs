@@ -140,7 +140,7 @@ use iter::{FromIterator, FusedIterator, TrustedLen};
 #[cfg(mem)]
 use {hint, mem};
 use ops::{self, Deref};
-use pin::Pin;
+//use pin::Pin;
 
 //SCW
 use intrinsics;
@@ -151,7 +151,6 @@ use default::Default;
 use clone::Clone;
 use marker::Copy;
 use ops::FnOnce;
-#[macro_use] use macros;
 
 
 // Note that this is not a lang item per se, but it has a hidden dependency on

@@ -3,7 +3,7 @@ use super::Wrapping;
 use ops::*;
 use ops::BitAnd;
 use ops::BitOr;
-use std::ops::*;
+
 
 #[allow(unused_macros)]
 macro_rules! sh_impl_signed {

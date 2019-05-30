@@ -80,7 +80,7 @@
 ///     let _second = PrintOnDrop("Declared second!");
 /// }
 /// ```
-//#[lang = "drop"]
+#[lang = "drop"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Drop {
     /// Executes the destructor for this type.

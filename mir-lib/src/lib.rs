@@ -20,7 +20,6 @@
 #![feature(pin)]
 #![feature(coerce_unsized)]
 #![feature(unsize)]
-
 #![feature(doc_spotlight)]
 #![feature(non_exhaustive)]
 #![feature(no_panic_pow)]
@@ -30,14 +29,13 @@
 #![feature(const_int_sign)]
 #![feature(const_int_conversion)]
 #![feature(const_int_rotate)]
-
 #![feature(optin_builtin_traits)]
 #![feature(structural_match)]
 #![feature(intrinsics)]
 #![feature(doc_cfg)]
 #![feature(allow_internal_unstable)]
 #![feature(unboxed_closures)]
-
+#![feature(prelude_import)]
 
 #![feature(no_core)]
 
@@ -45,27 +43,12 @@
 
 #![no_core]
 
+#[prelude_import]
+#[allow(unused)]
+use prelude::v1::*;
 
-mod intrinsics;
-
-#[macro_use] mod internal_macros;
 #[macro_use] mod macros;
-
-
-pub mod marker;
-pub mod clone;
-pub mod cmp;
-pub mod convert;
-pub mod default;
-pub mod ops;
-pub mod option;
-pub mod result;
-pub mod pin;
-
-pub mod panic;
-pub mod panicking;
-
-//pub mod slice;
+#[macro_use] mod internal_macros;
 
 #[path = "num/int_macros.rs"]
 #[macro_use]
@@ -94,6 +77,42 @@ mod uint_macros;
 
 #[macro_use]
 pub mod num;
+
+
+/* The libcore prelude, not as all-encompassing as the libstd prelude */
+
+pub mod prelude;
+
+/* Core modules for ownership management */
+
+pub mod intrinsics;
+//pub mod mem;
+//pub mod ptr;
+//pub mod hint;
+
+
+/* Core language traits */
+
+pub mod marker;
+pub mod ops;
+pub mod cmp;
+pub mod clone;
+pub mod default;
+pub mod convert;
+//pub mod borrow;
+
+
+/* Core types and methods on primitives */
+
+pub mod panic;
+pub mod panicking;
+pub mod option;
+pub mod result;
+pub mod pin;
+
+
+//pub mod slice;
+
 
 pub mod std;
 
