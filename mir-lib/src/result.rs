@@ -1,5 +1,9 @@
 #![stable(feature = "dummy", since = "0.0.0")]
 
+use ops::FnOnce;
+use option::Option;
+use option::Option::*;
+
 use self::Result::*;
 
     #[stable(feature = "dummy", since = "0.0.0")]

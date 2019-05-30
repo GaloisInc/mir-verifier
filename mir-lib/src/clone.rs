@@ -1,6 +1,3 @@
-#![stable(feature = "rust1", since = "1.0.0")]
-
-
 //! The `Clone` trait for types that cannot be 'implicitly copied'.
 //!
 //! In Rust, some simple types are "implicitly copyable" and when you
@@ -39,7 +36,10 @@
 //! }
 //! ```
 
+#![stable(feature = "rust1", since = "1.0.0")]
 
+use marker::Sized;
+use marker::Copy;
 
 /// A common trait for the ability to explicitly duplicate an object.
 ///
@@ -108,9 +108,8 @@
 ///   while variables captured by mutable reference never implement `Clone`.
 ///
 /// [impls]: #implementors
-
-
 #[stable(feature = "rust1", since = "1.0.0")]
+#[lang = "clone"]
 pub trait Clone : Sized {
     /// Returns a copy of the value.
     ///
@@ -137,6 +136,22 @@ pub trait Clone : Sized {
     }
 }
 
+// FIXME(aburka): these structs are used solely by #[derive] to
+// assert that every component of a type implements Clone or Copy.
+//
+// These structs should never appear in user code.
+#[doc(hidden)]
+#[allow(missing_debug_implementations)]
+#[unstable(feature = "derive_clone_copy",
+           reason = "deriving hack, should not be public",
+           issue = "0")]
+pub struct AssertParamIsClone<T: Clone + ?Sized> { _field: ::marker::PhantomData<T> }
+#[doc(hidden)]
+#[allow(missing_debug_implementations)]
+#[unstable(feature = "derive_clone_copy",
+           reason = "deriving hack, should not be public",
+           issue = "0")]
+pub struct AssertParamIsCopy<T: Copy + ?Sized> { _field: ::marker::PhantomData<T> }
 
 /// Implementations of `Clone` for primitive types.
 ///
@@ -145,6 +160,7 @@ pub trait Clone : Sized {
 mod impls {
 
     use super::Clone;
+    use marker::Sized;
 
     macro_rules! impl_clone {
         ($($t:ty)*) => {
@@ -165,17 +181,15 @@ mod impls {
         isize i8 i16 i32 i64 i128
         f32 f64
         bool char
-    } 
+    }
 
-
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "never_type", issue = "35121")]
     impl Clone for ! {
         #[inline]
         fn clone(&self) -> Self {
             *self
         }
     }
-
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Clone for *const T {
@@ -184,7 +198,6 @@ mod impls {
             *self
         }
     }
-
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Clone for *mut T {
@@ -195,7 +208,6 @@ mod impls {
     }
 
     // Shared references can be cloned, but mutable references *cannot*!
-
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized> Clone for &T {
         #[inline]

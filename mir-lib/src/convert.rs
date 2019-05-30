@@ -38,15 +38,20 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use marker::Sized;
+use result::Result;
+use result::Result::*;
+
 /// SCW:Need to add this
 #[lang = "eh_personality"] extern fn eh_personality() {}
 
+/*
 use core::panic::PanicInfo;
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     loop {}
-}
+}*/
 
 
 

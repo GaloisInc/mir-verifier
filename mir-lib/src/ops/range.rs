@@ -3,6 +3,13 @@ use fmt;
 #[cfg(hash)]
 use hash::{Hash, Hasher};
 
+use marker::Sized;
+use cmp::{PartialEq,PartialOrd,Ord,Eq};
+use option::Option;
+use option::Option::*;
+
+use super::super::option;
+
 /// An unbounded range (`..`).
 ///
 /// `RangeFull` is primarily used as a [slicing index], its shorthand is `..`.

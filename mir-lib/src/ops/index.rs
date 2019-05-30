@@ -4,6 +4,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use marker::Sized;
+
 /// Used for indexing operations (`container[index]`) in immutable contexts.
 ///
 /// `container[index]` is actually syntactic sugar for `*container.index(index)`,

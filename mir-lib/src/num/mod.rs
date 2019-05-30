@@ -2,18 +2,25 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use option::Option;
+use option::Option::*;
+use marker::Copy;
+use cmp::{PartialOrd};
+use result::Result::{self,Ok,Err};
+use convert::From;
+
 use crate::convert::{TryFrom};
 
 #[cfg(infallible)]
 use convert::{Infallible};
 #[cfg(fmt)]
 use fmt;
-use core::intrinsics::*;
 #[cfg(mem)]
 use mem;
 use ops;
 #[cfg(fmt)]
 use str::FromStr;
+use intrinsics;
 
 macro_rules! impl_nonzero_fmt {
     ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
@@ -121,6 +128,7 @@ nonzero_integers! {
     #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroIsize(isize);
 }
 
+#[cfg(fmt)]
 macro_rules! from_str_radix_nzint_impl {
     ($($t:ty)*) => {$(
         #[cfg(fmt)]
@@ -906,7 +914,7 @@ $EndFeature, "
                 Some(acc)
             }
         }
-
+/*
         doc_comment! {
             concat!("Saturating integer addition. Computes `self + rhs`, saturating at the numeric
 bounds instead of overflowing.
@@ -952,7 +960,7 @@ $EndFeature, "
                 intrinsics::saturating_sub(self, rhs)
             }
         }
-
+*/
         doc_comment! {
             concat!("Saturating integer multiplication. Computes `self * rhs`, saturating at the
 numeric bounds instead of overflowing.
@@ -2083,30 +2091,26 @@ fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
     }
 }
 
-#[cfg(uint_impl)]
-//#[lang = "i8"]
+#[lang = "i8"]
 impl i8 {
     int_impl! { i8, i8, u8, 8, -128, 127, "", "", 2, "-0x7e", "0xa", "0x12", "0x12", "0x48",
         "[0x12]", "[0x12]" }
 }
 
-#[cfg(uint_impl)]
-//#[lang = "i16"]
+#[lang = "i16"]
 impl i16 {
     int_impl! { i16, i16, u16, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a", "0x1234", "0x3412",
         "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]" }
 }
 
-#[cfg(uint_impl)]
-//#[lang = "i32"]
+#[lang = "i32"]
 impl i32 {
     int_impl! { i32, i32, u32, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301",
         "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
         "[0x12, 0x34, 0x56, 0x78]" }
 }
 
-#[cfg(uint_impl)]
-//#[lang = "i64"]
+#[lang = "i64"]
 impl i64 {
     int_impl! { i64, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "", 12,
          "0xaa00000000006e1", "0x6e10aa", "0x1234567890123456", "0x5634129078563412",
@@ -2114,8 +2118,7 @@ impl i64 {
          "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
 }
 
-#[cfg(uint_impl)]
-//#[lang = "i128"]
+#[lang = "i128"]
 impl i128 {
     int_impl! { i128, i128, u128, 128, -170141183460469231731687303715884105728,
         170141183460469231731687303715884105727, "", "", 16,
@@ -2127,26 +2130,23 @@ impl i128 {
           0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]" }
 }
 
-#[cfg(uint_impl)]
 #[cfg(target_pointer_width = "16")]
-//#[lang = "isize"]
+#[lang = "isize"]
 impl isize {
     int_impl! { isize, i16, u16, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a", "0x1234",
         "0x3412", "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]" }
 }
 
-#[cfg(uint_impl)]
 #[cfg(target_pointer_width = "32")]
-//#[lang = "isize"]
+#[lang = "isize"]
 impl isize {
     int_impl! { isize, i32, u32, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301",
         "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
         "[0x12, 0x34, 0x56, 0x78]" }
 }
 
-#[cfg(uint_impl)]
 #[cfg(target_pointer_width = "64")]
-//#[lang = "isize"]
+#[lang = "isize"]
 impl isize {
     int_impl! { isize, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "",
         12, "0xaa00000000006e1", "0x6e10aa",  "0x1234567890123456", "0x5634129078563412",
@@ -2297,7 +2297,7 @@ assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
                 intrinsics::cttz(self) as u32
             }
         }
-
+/*
         doc_comment! {
             concat!("Shifts the bits to the left by a specified amount, `n`,
 wrapping the truncated bits to the end of the resulting integer.
@@ -2319,8 +2319,8 @@ assert_eq!(n.rotate_left(", $rot, "), m);
             pub const fn rotate_left(self, n: u32) -> Self {
                 intrinsics::rotate_left(self, n as $SelfT)
             }
-        }
-
+        } */
+/*
         doc_comment! {
             concat!("Shifts the bits to the right by a specified amount, `n`,
 wrapping the truncated bits to the beginning of the resulting
@@ -2344,7 +2344,7 @@ assert_eq!(n.rotate_right(", $rot, "), m);
                 intrinsics::rotate_right(self, n as $SelfT)
             }
         }
-
+*/
         doc_comment! {
             concat!("
 Reverses the byte order of the integer.
@@ -2773,7 +2773,7 @@ assert_eq!(", stringify!($SelfT), "::max_value().checked_pow(2), None);", $EndFe
                 Some(acc)
             }
         }
-
+/*
         doc_comment! {
             concat!("Saturating integer addition. Computes `self + rhs`, saturating at
 the numeric bounds instead of overflowing.
@@ -2814,7 +2814,7 @@ assert_eq!(13", stringify!($SelfT), ".saturating_sub(127), 0);", $EndFeature, "
                 intrinsics::saturating_sub(self, rhs)
             }
         }
-
+*/
         doc_comment! {
             concat!("Saturating integer multiplication. Computes `self * rhs`,
 saturating at the numeric bounds instead of overflowing.
@@ -3814,8 +3814,7 @@ fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
     }
 }
 
-//#[lang = "u8"]
-#[cfg(uint_impl)]
+#[lang = "u8"]
 impl u8 {
     uint_impl! { u8, u8, 8, 255, "", "", 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
         "[0x12]" }
@@ -4334,22 +4333,19 @@ impl u8 {
     }
 }
 
-//#[lang = "u16"]
-#[cfg(uint_impl)]
+#[lang = "u16"]
 impl u16 {
     uint_impl! { u16, u16, 16, 65535, "", "", 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
         "[0x34, 0x12]", "[0x12, 0x34]" }
 }
 
-//#[lang = "u32"]
-#[cfg(uint_impl)]
+#[lang = "u32"]
 impl u32 {
     uint_impl! { u32, u32, 32, 4294967295, "", "", 8, "0x10000b3", "0xb301", "0x12345678",
         "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]" }
 }
 
-//#[lang = "u64"]
-#[cfg(uint_impl)]
+#[lang = "u64"]
 impl u64 {
     uint_impl! { u64, u64, 64, 18446744073709551615, "", "", 12, "0xaa00000000006e1", "0x6e10aa",
         "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
@@ -4357,8 +4353,7 @@ impl u64 {
         "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
 }
 
-//#[lang = "u128"]
-#[cfg(uint_impl)]
+#[lang = "u128"]
 impl u128 {
     uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, "", "", 16,
         "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
@@ -4369,23 +4364,20 @@ impl u128 {
           0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]" }
 }
 
-//#[lang = "usize"]
-#[cfg(uint_impl)]
+#[lang = "usize"]
 #[cfg(target_pointer_width = "16")]
 impl usize {
     uint_impl! { usize, u16, 16, 65536, "", "", 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
         "[0x34, 0x12]", "[0x12, 0x34]" }
 }
-//#[lang = "usize"]
-#[cfg(uint_impl)]
+#[lang = "usize"]
 #[cfg(target_pointer_width = "32")]
 impl usize {
     uint_impl! { usize, u32, 32, 4294967295, "", "", 8, "0x10000b3", "0xb301", "0x12345678",
         "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]" }
 }
 
-//#[lang = "usize"]
-#[cfg(uint_impl)]
+#[lang = "usize"]
 #[cfg(target_pointer_width = "64")]
 impl usize {
     uint_impl! { usize, u64, 64, 18446744073709551615, "", "", 12, "0xaa00000000006e1", "0x6e10aa",
@@ -4445,6 +4437,7 @@ pub enum FpCategory {
     Normal,
 }
 
+#[cfg(fmt)]
 macro_rules! from_str_radix_int_impl {
     ($($t:ty)*) => {$(
         #[cfg(fmt)]        
@@ -4568,6 +4561,7 @@ macro_rules! try_from_upper_bounded {
 // all other cases
 macro_rules! try_from_both_bounded {
     ($source:ty, $($target:ty),*) => {$(
+
         #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
@@ -4632,6 +4626,7 @@ try_from_lower_bounded!(isize, usize);
 mod ptr_try_from_impls {
     use super::TryFromIntError;
     use convert::TryFrom;
+    use result::Result::{self,Ok,Err};        
 
     try_from_upper_bounded!(usize, u8);
     try_from_unbounded!(usize, u16, u32, u64, u128);
@@ -4655,6 +4650,7 @@ mod ptr_try_from_impls {
 mod ptr_try_from_impls {
     use super::TryFromIntError;
     use convert::TryFrom;
+    use result::Result::{self,Ok,Err};    
 
     try_from_upper_bounded!(usize, u8, u16);
     try_from_unbounded!(usize, u32, u64, u128);
@@ -4681,6 +4677,7 @@ mod ptr_try_from_impls {
 mod ptr_try_from_impls {
     use super::TryFromIntError;
     use convert::TryFrom;
+    use result::Result::{self,Ok,Err};        
 
     try_from_upper_bounded!(usize, u8, u16, u32);
     try_from_unbounded!(usize, u64, u128);

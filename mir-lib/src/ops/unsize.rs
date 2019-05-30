@@ -1,4 +1,5 @@
-use core::marker::Unsize;
+use marker::Unsize;
+use marker::Sized;
 
 /// Trait that indicates that this is a pointer or a wrapper for one,
 /// where unsizing can be performed on the pointee.

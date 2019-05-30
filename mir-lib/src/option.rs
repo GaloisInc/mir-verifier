@@ -143,7 +143,16 @@ use ops::{self, Deref};
 use pin::Pin;
 
 //SCW
-use core::intrinsics;
+use intrinsics;
+use result::Result;
+use result::Result::*;
+use convert::From;
+use default::Default;
+use clone::Clone;
+use marker::Copy;
+use ops::FnOnce;
+#[macro_use] use macros;
+
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of

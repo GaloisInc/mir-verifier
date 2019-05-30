@@ -1,11 +1,3 @@
-//SCW: from https://github.com/rust-lang/rust/blob/master/src/libcore/cmp.rs
-// 4/11/19
-
-// remove PartialOrd method
-// add module resolutions, remove infix notation
-// remove #[lang = "partial_ord"] etc
-
-
 //! Functionality for ordering and comparison.
 //!
 //! This module contains various tools for ordering and comparing values. In
@@ -29,6 +21,12 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use self::Ordering::*;
+use marker::Sized;
+use option::Option;
+use option::Option::*;
+use ops::FnOnce;
+use std::ops::Neg;
+
 
 /// Trait for equality comparisons which are [partial equivalence
 /// relations](http://en.wikipedia.org/wiki/Partial_equivalence_relation).
@@ -186,7 +184,7 @@ use self::Ordering::*;
 /// assert_eq!(x == y, false);
 /// assert_eq!(x.eq(&y), false);
 /// ```
-
+#[lang = "eq"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = "==")]
 #[doc(alias = "!=")]
@@ -250,8 +248,7 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 #[doc(alias = "==")]
 #[doc(alias = "!=")]
 #[stable(feature = "rust1", since = "1.0.0")]
-    pub trait Eq: PartialEq<Self> {
-/*        
+pub trait Eq: PartialEq<Self> {
     // this method is used solely by #[deriving] to assert
     // that every component of a type implements #[deriving]
     // itself, the current deriving infrastructure means doing this
@@ -263,10 +260,8 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn assert_receiver_is_total_eq(&self) {}
-*/
 }
 
-/*    
 // FIXME: this struct is used solely by #[derive] to
 // assert that every component of a type implements Eq.
 //
@@ -277,8 +272,7 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
            reason = "deriving hack, should not be public",
            issue = "0")]
 pub struct AssertParamIsEq<T: Eq + ?Sized> { _field: ::marker::PhantomData<T> }
-     */
-    
+
 /// An `Ordering` is the result of a comparison between two values.
 ///
 /// # Examples
@@ -295,16 +289,17 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> { _field: ::marker::PhantomData<T> }
 /// let result = 2.cmp(&1);
 /// assert_eq!(Ordering::Greater, result);
 /// ```
-#[derive(Clone)]
+//#[derive(Clone, Copy, PartialEq, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Ordering {
-    /// An ordering where a compared value is less [than another].
+    /// An ordering where a compared value is less than another.
     #[stable(feature = "rust1", since = "1.0.0")]
     Less = -1,
-    /// An ordering where a compared value is equal [to another].
+    /// An ordering where a compared value is equal to another.
     #[stable(feature = "rust1", since = "1.0.0")]
     Equal = 0,
-    /// An ordering where a compared value is greater [than another].
+    /// An ordering where a compared value is greater than another.
     #[stable(feature = "rust1", since = "1.0.0")]
     Greater = 1,
 }
@@ -436,21 +431,11 @@ impl Ordering {
 /// v.sort_by_key(|&num| (num > 3, Reverse(num)));
 /// assert_eq!(v, vec![3, 2, 1, 6, 5, 4]);
 /// ```
-#[derive(Clone, Default)]
+//#[derive(PartialEq, Eq, Debug, Copy, Clone, Default, Hash)]
+#[derive(PartialEq, Eq, Copy, Clone, Default)]
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
 pub struct Reverse<T>(#[stable(feature = "reverse_cmp_key", since = "1.19.0")] pub T);
 
-#[stable(feature = "rust1", since = "1.0.0")]    
-impl<T: PartialEq> PartialEq for Reverse<T> {
-     fn eq(&self, other: &Self) -> bool {
-         (self.0).eq(&other.0)
-     }
-}
-    
-#[stable(feature = "rust1", since = "1.0.0")]    
-impl<T: PartialEq> Eq for Reverse<T> { }
-
-    
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
 impl<T: PartialOrd> PartialOrd for Reverse<T> {
     #[inline]
@@ -459,13 +444,13 @@ impl<T: PartialOrd> PartialOrd for Reverse<T> {
     }
 
     #[inline]
-    fn lt(&self, other: &Self) -> bool { (other.0).lt(&self.0) }
+    fn lt(&self, other: &Self) -> bool { other.0 < self.0 }
     #[inline]
-    fn le(&self, other: &Self) -> bool { (other.0).le(&self.0) }
+    fn le(&self, other: &Self) -> bool { other.0 <= self.0 }
     #[inline]
-    fn ge(&self, other: &Self) -> bool { (other.0).ge(&self.0) }
+    fn ge(&self, other: &Self) -> bool { other.0 >= self.0 }
     #[inline]
-    fn gt(&self, other: &Self) -> bool { (other.0).gt(&self.0) }
+    fn gt(&self, other: &Self) -> bool { other.0 > self.0 }
 }
 
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
@@ -533,7 +518,7 @@ impl<T: Ord> Ord for Reverse<T> {
 ///     }
 /// }
 /// ```
-
+#[lang = "ord"]
 #[doc(alias = "<")]
 #[doc(alias = ">")]
 #[doc(alias = "<=")]
@@ -571,7 +556,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     #[inline]
     fn max(self, other: Self) -> Self
     where Self: Sized {
-        if other.ge(&self) { other } else { self }
+        if other >= self { other } else { self }
     }
 
     /// Compares and returns the minimum of two values.
@@ -588,7 +573,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
     #[inline]
     fn min(self, other: Self) -> Self
     where Self: Sized {
-        if self.le(&other) { self } else { other }
+        if self <= other { self } else { other }
     }
 
     /// Restrict a value to a certain interval.
@@ -612,10 +597,10 @@ pub trait Ord: Eq + PartialOrd<Self> {
     #[unstable(feature = "clamp", issue = "44095")]
     fn clamp(self, min: Self, max: Self) -> Self
     where Self: Sized {
-        //assert!(min.le(&max));
-        if self.lt(&min) {
+        assert!(min <= max);
+        if self < min {
             min
-        } else if self.gt(&max ) {
+        } else if self > max {
             max
         } else {
             self
@@ -623,53 +608,14 @@ pub trait Ord: Eq + PartialOrd<Self> {
     }
 }
 
-    // SCW: added
-    #[stable(feature = "rust1", since = "1.0.0")]    
-    impl PartialEq for Ordering {
-        fn eq(&self, other:&Self) -> bool {
-            match self {
-                Less => match other {
-                    Less => true,
-                    _    => false
-                },
-                Equal => match other {
-                    Equal => true,
-                    _  => false,
-                },
-                Greater => match other {
-                    Greater => true,
-                    _       => false
-                }
-            }
-        }
-
-        fn ne(&self, other: &Self) -> bool { !self.eq(&other) }
-    }
-
-
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Eq for Ordering {
-}
+impl Eq for Ordering {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ordering {
     #[inline]
     fn cmp(&self, other: &Ordering) -> Ordering {
-          match self {
-                Less => match other {
-                    Less => Equal,
-                    _    => Less
-                },
-                Equal => match other {
-                    Less => Greater,
-                    Equal => Equal,
-                    Greater => Less,
-                },
-                Greater => match other {
-                    Greater => Equal,
-                    _       => Greater
-                }
-            }
+        (*self as i32).cmp(&(*other as i32))
     }
 }
 
@@ -677,7 +623,7 @@ impl Ord for Ordering {
 impl PartialOrd for Ordering {
     #[inline]
     fn partial_cmp(&self, other: &Ordering) -> Option<Ordering> {
-        Some(self::Ord::cmp(self,other))
+        (*self as i32).partial_cmp(&(*other as i32))
     }
 }
 
@@ -779,7 +725,7 @@ impl PartialOrd for Ordering {
 /// assert_eq!(x < y, true);
 /// assert_eq!(x.lt(&y), true);
 /// ```
-
+#[lang = "partial_ord"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = ">")]
 #[doc(alias = "<")]
@@ -945,9 +891,12 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 }
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
-//mod impls {
-//    use cmp::Ordering::{self, Less, Greater, Equal};
-
+mod impls {
+    use cmp::{PartialEq,Eq,PartialOrd,Ord};
+    use cmp::Ordering::{self, Less, Greater, Equal};
+    use marker::Sized;
+    use option::Option::{self,None,Some};
+    
     macro_rules! partial_eq_impl {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -968,25 +917,10 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
         fn ne(&self, _other: &()) -> bool { false }
     }
 
-    
-   partial_eq_impl! { bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
-/*
-   #[stable(feature = "rust1", since = "1.0.0")]    
-   impl PartialEq for usize {
-                #[inline]
-                fn eq(&self, other: &usize) -> bool { (*self) == (*other) }
-                #[inline]
-                fn ne(&self, other: &usize) -> bool { (*self) != (*other) }
-   }
-   #[stable(feature = "rust1", since = "1.0.0")]        
-   impl PartialEq for isize {
-                #[inline]
-                fn eq(&self, other: &isize) -> bool { (*self) == (*other) }
-                #[inline]
-                fn ne(&self, other: &isize) -> bool { (*self) != (*other) }
-   }
-  */   
-    
+    partial_eq_impl! {
+        bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64
+    }
+
     macro_rules! eq_impl {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -995,10 +929,6 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
     }
 
     eq_impl! { () bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
-/*    #[stable(feature = "rust1", since = "1.0.0")]
-    impl Eq for usize {}
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl Eq for isize {} */
 
     macro_rules! partial_ord_impl {
         ($($t:ty)*) => ($(
@@ -1024,9 +954,6 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
             }
         )*)
     }
-/*
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl Eq for () {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl PartialOrd for () {
@@ -1037,23 +964,12 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
-    impl PartialEq for bool {
-        #[inline]
-        fn eq(&self, other: &bool) -> bool {
-            if *self { *other } else { false }
-        }
-    }
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl Eq for bool {}
-    
-    #[stable(feature = "rust1", since = "1.0.0")]
     impl PartialOrd for bool {
         #[inline]
         fn partial_cmp(&self, other: &bool) -> Option<Ordering> {
-            Some(self::Ord::cmp(self,other))
+            (*self as u8).partial_cmp(&(*other as u8))
         }
-    } */
+    }
 
     partial_ord_impl! { f32 f64 }
 
@@ -1063,7 +979,7 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
             impl PartialOrd for $t {
                 #[inline]
                 fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
-                    Some(self::Ord::cmp(self,other))
+                    Some(self.cmp(other))
                 }
                 #[inline]
                 fn lt(&self, other: &$t) -> bool { (*self) < (*other) }
@@ -1087,7 +1003,7 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
         )*)
     }
 
-/*    #[stable(feature = "rust1", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl Ord for () {
         #[inline]
         fn cmp(&self, _other: &()) -> Ordering { Equal }
@@ -1097,66 +1013,12 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
     impl Ord for bool {
         #[inline]
         fn cmp(&self, other: &bool) -> Ordering {
-            if *self { if *other { Equal } else { Greater } }
-            else if *other { Less } else { Equal }
+            (*self as u8).cmp(&(*other as u8))
         }
-    } */
+    }
 
-ord_impl! { char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
-/*
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl PartialOrd for usize {
-                #[inline]
-                fn partial_cmp(&self, other: &usize) -> Option<Ordering> {
-                    Some(self::Ord::cmp(self,other))
-                }
-                #[inline]
-                fn lt(&self, other: &usize) -> bool { (*self) < (*other) }
-                #[inline]
-                fn le(&self, other: &usize) -> bool { (*self) <= (*other) }
-                #[inline]
-                fn ge(&self, other: &usize) -> bool { (*self) >= (*other) }
-                #[inline]
-                fn gt(&self, other: &usize) -> bool { (*self) > (*other) }
-            }
+    ord_impl! { char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl Ord for usize {
-                #[inline]
-                fn cmp(&self, other: &usize) -> Ordering {
-                    if *self == *other { Equal }
-                    else if *self < *other { Less }
-                    else { Greater }
-                }
-            }
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl PartialOrd for isize {
-                #[inline]
-                fn partial_cmp(&self, other: &isize) -> Option<Ordering> {
-                    Some(self::Ord::cmp(self,other))
-                }
-                #[inline]
-                fn lt(&self, other: &isize) -> bool { (*self) < (*other) }
-                #[inline]
-                fn le(&self, other: &isize) -> bool { (*self) <= (*other) }
-                #[inline]
-                fn ge(&self, other: &isize) -> bool { (*self) >= (*other) }
-                #[inline]
-                fn gt(&self, other: &isize) -> bool { (*self) > (*other) }
-            }
-
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl Ord for isize {
-                #[inline]
-                fn cmp(&self, other: &isize) -> Ordering {
-                    if *self == *other { Equal }
-                    else if *self < *other { Less }
-                    else { Greater }
-                }
-            }
-    */
-
-    
     #[unstable(feature = "never_type", issue = "35121")]
     impl PartialEq for ! {
         fn eq(&self, _: &!) -> bool {
@@ -1260,3 +1122,4 @@ ord_impl! { char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
         #[inline]
         fn ne(&self, other: &&B) -> bool { PartialEq::ne(*self, *other) }
     }
+}

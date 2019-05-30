@@ -2,6 +2,8 @@
 // 3/13/19
 //added preamble and removed stability & lang annotations
 
+use marker::Sized;
+
 ///
 /// impl<T> Deref for DerefExample<T> {
 ///     type Target = T;

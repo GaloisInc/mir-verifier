@@ -5,6 +5,8 @@
 #![feature(exact_size_is_empty)]
 #![feature(i128_type)]
 #![feature(lang_items)]
+
+
 #![feature(never_type)]
 #![feature(on_unimplemented)]
 #![feature(rustc_attrs)]
@@ -29,11 +31,28 @@
 #![feature(const_int_conversion)]
 #![feature(const_int_rotate)]
 
+#![feature(optin_builtin_traits)]
+#![feature(structural_match)]
+#![feature(intrinsics)]
+#![feature(doc_cfg)]
+#![feature(allow_internal_unstable)]
+#![feature(unboxed_closures)]
+
+
+#![feature(no_core)]
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[macro_use] mod internal_macros;
+#![no_core]
 
+
+mod intrinsics;
+
+#[macro_use] mod internal_macros;
+#[macro_use] mod macros;
+
+
+pub mod marker;
 pub mod clone;
 pub mod cmp;
 pub mod convert;
@@ -41,10 +60,13 @@ pub mod default;
 pub mod ops;
 pub mod option;
 pub mod result;
-pub mod slice;
 pub mod pin;
 
-/*
+pub mod panic;
+pub mod panicking;
+
+//pub mod slice;
+
 #[path = "num/int_macros.rs"]
 #[macro_use]
 mod int_macros;
@@ -72,8 +94,6 @@ mod uint_macros;
 
 #[macro_use]
 pub mod num;
-*/
 
-//pub mod iter;
-
+pub mod std;
 

@@ -157,17 +157,19 @@ instance FromJSON Var where
 
 instance FromJSON Collection where
     parseJSON = withObject "Collection" $ \v -> do
+      let f :: DefId -> a -> a -> a
+          f txt x y = error $ "Duplicate entry in collection found for " ++ show txt
       (fns    :: [Fn])        <- v .: "fns"
       (adts   :: [Adt])       <- v .: "adts"
       (traits :: [Trait])     <- v .: "traits"
       (impls  :: [TraitImpl]) <- v .: "impls"
       (statics :: [Static]  ) <- v .: "statics"
       return $ Collection
-        (foldr (\ x m -> Map.insert (x^.fname) x m)     Map.empty fns)
-        (foldr (\ x m -> Map.insert (x^.adtname) x m)   Map.empty adts)
-        (foldr (\ x m -> Map.insert (x^.traitName) x m) Map.empty traits)
+        (foldr (\ x m -> Map.insertWithKey f (x^.fname) x m)     Map.empty fns)
+        (foldr (\ x m -> Map.insertWithKey f (x^.adtname) x m)   Map.empty adts)
+        (foldr (\ x m -> Map.insertWithKey f (x^.traitName) x m) Map.empty traits)
         impls
-        (foldr (\ x m -> Map.insert (x^.sName) x m)     Map.empty statics)
+        (foldr (\ x m -> Map.insertWithKey f (x^.sName) x m)     Map.empty statics)
 
 
 instance FromJSON Fn where

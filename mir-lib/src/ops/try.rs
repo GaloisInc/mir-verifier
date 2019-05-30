@@ -3,6 +3,8 @@
 
 #![unstable(feature = "try_trait", issue = "42327")]
 
+use result::Result;
+
 /// A trait for customizing the behavior of the `?` operator.
 ///
 /// A type implementing `Try` is one that has a canonical way to view it

@@ -1,5 +1,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use marker::Sized;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Default: Sized {
   #[stable(feature = "rust1", since = "1.0.0")]

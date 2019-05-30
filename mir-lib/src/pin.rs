@@ -275,10 +275,13 @@ cfg(hash)
 #[cfg(fmt)]
 use fmt;
 
-use core::intrinsics;
+use intrinsics;
 
-use core::marker::{Sized, Unpin};
-use core::cmp::{self, PartialEq, PartialOrd};
+use ops::FnOnce;
+
+use option::Option;
+use marker::{Sized, Unpin};
+use cmp::{self, PartialEq, PartialOrd};
 use ops::{Deref, DerefMut};
 
 use ops::{CoerceUnsized,DispatchFromDyn};

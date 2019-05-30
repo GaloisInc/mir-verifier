@@ -142,8 +142,8 @@ pub mod consts {
     pub const LN_10: f32 = 2.30258509299404568401799145468436421_f32;
 }
 
-#[cfg(uint_impl)]
-//#[lang = "f32"]
+
+#[lang = "f32"]
 #[cfg(not(test))]
 impl f32 {
     /// Returns `true` if this value is `NaN`.

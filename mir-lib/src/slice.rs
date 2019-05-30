@@ -50,21 +50,28 @@ eq_contraint
 // * The `raw` and `bytes` submodules.
 // * Boilerplate trait implementations.
 
-use core::cmp::Ordering::{self, Less, Equal, Greater};
-use core::cmp;
+use clone::Clone;
+
+use cmp::Ordering::{self, Less, Equal, Greater};
+use cmp::{Ord, PartialEq, PartialOrd, Eq};
+use cmp;
 #[cfg(fmt)]
 use core::fmt;
-use core::intrinsics::{self, assume};
-use core::isize;
-use core::iter::*;
-use core::ops::{FnMut, Try, self};
-use core::option::Option;
-use core::option::Option::{None, Some};
-use core::result::Result;
-use core::result::Result::{Ok, Err};
+use intrinsics::{self, assume};
+use isize;
+#[cfg(iter)]
+use iter::*;
+use ops::{FnMut, Try, self};
+use option::Option;
+use option::Option::{None, Some};
+use result::Result;
+use result::Result::{Ok, Err};
+
+#[cfg(mem)]
 use core::ptr;
+#[cfg(mem)]
 use core::mem;
-use core::marker::{Copy, Send, Sync, Sized, self};
+use marker::{Copy, Send, Sync, Sized, self};
 
 #[unstable(feature = "slice_internals", issue = "0",
            reason = "exposed from core to be reused in std; use the memchr crate")]
@@ -2191,23 +2198,23 @@ impl<T> [T] {
     /// assert_eq!(&bytes, b"Hello, Wello!");
     /// ```
     #[unstable(feature = "copy_within", issue = "54236")]
-    pub fn copy_within<R: core::ops::RangeBounds<usize>>(&mut self, src: R, dest: usize)
+    pub fn copy_within<R: ops::RangeBounds<usize>>(&mut self, src: R, dest: usize)
     where
         T: Copy,
     {
         let src_start = match src.start_bound() {
-            core::ops::Bound::Included(&n) => n,
-            core::ops::Bound::Excluded(&n) => n
+            ops::Bound::Included(&n) => n,
+            ops::Bound::Excluded(&n) => n
                 .checked_add(1)
                 .unwrap_or_else(|| slice_index_overflow_fail()),
-            core::ops::Bound::Unbounded => 0,
+            ops::Bound::Unbounded => 0,
         };
         let src_end = match src.end_bound() {
-            core::ops::Bound::Included(&n) => n
+            ops::Bound::Included(&n) => n
                 .checked_add(1)
                 .unwrap_or_else(|| slice_index_overflow_fail()),
-            core::ops::Bound::Excluded(&n) => n,
-            core::ops::Bound::Unbounded => self.len(),
+            ops::Bound::Excluded(&n) => n,
+            ops::Bound::Unbounded => self.len(),
         };
         assert!(src_start <= src_end, "src end is before src start");
         assert!(src_end <= self.len(), "src is out of bounds");
@@ -2586,7 +2593,7 @@ impl [u8] {
 
 #[cfg(orphan)]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, I> core::ops::Index<I> for [T]
+impl<T, I> ops::Index<I> for [T]
     where I: SliceIndex<[T]>
 {
     type Output = I::Output;
@@ -2599,7 +2606,7 @@ impl<T, I> core::ops::Index<I> for [T]
 
 #[cfg(orphan)]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, I> core::ops::IndexMut<I> for [T]
+impl<T, I> ops::IndexMut<I> for [T]
     where I: SliceIndex<[T]>
 {
     #[inline]
@@ -2639,17 +2646,17 @@ mod private_slice_index {
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
     impl Sealed for usize {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    impl Sealed for core::ops::Range<usize> {}
+    impl Sealed for ops::Range<usize> {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    impl Sealed for core::ops::RangeTo<usize> {}
+    impl Sealed for ops::RangeTo<usize> {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    impl Sealed for core::ops::RangeFrom<usize> {}
+    impl Sealed for ops::RangeFrom<usize> {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    impl Sealed for core::ops::RangeFull {}
+    impl Sealed for ops::RangeFull {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    impl Sealed for core::ops::RangeInclusive<usize> {}
+    impl Sealed for ops::RangeInclusive<usize> {}
     #[stable(feature = "slice_get_slice", since = "1.28.0")]
-    impl Sealed for core::ops::RangeToInclusive<usize> {}
+    impl Sealed for ops::RangeToInclusive<usize> {}
 }
 
 /// A helper trait used for indexing operations.
@@ -2768,16 +2775,16 @@ impl<T> SliceIndex<[T]> for usize {
     }
 }
 
-fn slice_index_range_get_unchecked<T>(sel: core::ops::Range<usize>,  slice: &[T]) -> &[T] {
+fn slice_index_range_get_unchecked<T>(sel: ops::Range<usize>,  slice: &[T]) -> &[T] {
     unsafe { intrinsics::abort() }
 }
-fn slice_index_range_get_unchecked_mut<T>(sel: core::ops::Range<usize>,  slice: &mut[T]) -> &mut [T] {
+fn slice_index_range_get_unchecked_mut<T>(sel: ops::Range<usize>,  slice: &mut[T]) -> &mut [T] {
     unsafe { intrinsics::abort() }
 }
 
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
-impl<T> SliceIndex<[T]> for  core::ops::Range<usize> {
+impl<T> SliceIndex<[T]> for  ops::Range<usize> {
     type Output = [T];
 
     #[inline]
@@ -2840,7 +2847,7 @@ impl<T> SliceIndex<[T]> for  core::ops::Range<usize> {
 }
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
-impl<T> SliceIndex<[T]> for core::ops::RangeTo<usize> {
+impl<T> SliceIndex<[T]> for ops::RangeTo<usize> {
     type Output = [T];
 
     #[inline]
@@ -2875,7 +2882,7 @@ impl<T> SliceIndex<[T]> for core::ops::RangeTo<usize> {
 }
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
-impl<T> SliceIndex<[T]> for core::ops::RangeFrom<usize> {
+impl<T> SliceIndex<[T]> for ops::RangeFrom<usize> {
     type Output = [T];
 
     #[inline]
@@ -2910,7 +2917,7 @@ impl<T> SliceIndex<[T]> for core::ops::RangeFrom<usize> {
 }
 
 #[stable(feature = "slice_get_slice_impls", since = "1.15.0")]
-impl<T> SliceIndex<[T]> for core::ops::RangeFull {
+impl<T> SliceIndex<[T]> for ops::RangeFull {
     type Output = [T];
 
     #[inline]
@@ -2948,7 +2955,7 @@ impl<T> SliceIndex<[T]> for core::ops::RangeFull {
 //::ops::range::{{impl}}[12]::end<usize>
 #[cfg(range_usize)]
 #[stable(feature = "inclusive_range", since = "1.26.0")]
-impl<T> SliceIndex<[T]> for core::ops::RangeInclusive<usize> {
+impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
     type Output = [T];
 
     #[inline]
@@ -2988,7 +2995,7 @@ impl<T> SliceIndex<[T]> for core::ops::RangeInclusive<usize> {
 
 #[cfg(range_usize)]
 #[stable(feature = "inclusive_range", since = "1.26.0")]
-impl<T> SliceIndex<[T]> for core::ops::RangeToInclusive<usize> {
+impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
     type Output = [T];
 
     #[inline]
@@ -3098,6 +3105,7 @@ macro_rules! len {
 }
 
 // The shared definition of the `Iter` and `IterMut` iterators
+#[cfg(iter)]
 macro_rules! iterator {
     (
         struct $name:ident -> $ptr:ty,
@@ -4024,6 +4032,7 @@ impl<T: fmt::Debug, P> fmt::Debug for RSplitNMut<'_, T, P> where P: FnMut(&T) ->
     }
 }
 
+#[cfg(eq_constraint)]
 macro_rules! forward_iterator {
     ($name:ident: $elem:ident, $iter_of:ty) => {
         #[stable(feature = "rust1", since = "1.0.0")]
