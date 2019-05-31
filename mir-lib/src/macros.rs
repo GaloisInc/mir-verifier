@@ -15,9 +15,10 @@ macro_rules! panic {
         panic!($msg)
     );
     ($fmt:expr, $($arg:tt)+) => ({
-        #[cfg(fmt)]
-        $crate::panicking::panic_fmt(format_args!($fmt, $($arg)*),
-                                     &(file!(), line!(), __rust_unstable_column!()))
+        // This would be #[cfg(fmt)], but we also need to provide an expr for the non-fmt case
+        //$crate::panicking::panic_fmt(format_args!($fmt, $($arg)*),
+        //                             &(file!(), line!(), __rust_unstable_column!()))
+        panic!()
     });
 }
 

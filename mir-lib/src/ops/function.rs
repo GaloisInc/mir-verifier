@@ -9,17 +9,20 @@
 // except according to those terms.
 
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[lang = "fn"]
         pub trait Fn<Args> : FnMut<Args> {
             #[stable(feature = "rust1", since = "1.0.0")]
             fn call(&self, args: Args) -> Self::Output;
         } 
 
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[lang = "fn_mut"]
         pub trait FnMut<Args> : FnOnce<Args> {
             #[stable(feature = "rust1", since = "1.0.0")]
             fn call_mut(&mut self, args: Args) -> Self::Output;
         } 
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[lang = "fn_once"]
         pub trait FnOnce<Args> {
             #[stable(feature = "rust1", since = "1.0.0")]
             type Output;

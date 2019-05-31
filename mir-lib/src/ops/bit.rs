@@ -38,7 +38,7 @@
 /// assert_eq!(!Answer::Yes, Answer::No);
 /// assert_eq!(!Answer::No, Answer::Yes);
 /// ```
-//#[lang = "not"]
+#[lang = "not"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Not {
     /// The resulting type after applying the `!` operator.
@@ -120,7 +120,7 @@ not_impl! { bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
 /// let expected = BooleanVector(vec![true, false, false, false]);
 /// assert_eq!(bv1 & bv2, expected);
 /// ```
-//#[lang = "bitand"]
+#[lang = "bitand"]
 #[doc(alias = "&")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} & {RHS}`",
@@ -205,7 +205,7 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// let expected = BooleanVector(vec![true, true, true, false]);
 /// assert_eq!(bv1 | bv2, expected);
 /// ```
-//#[lang = "bitor"]
+#[lang = "bitor"]
 #[doc(alias = "|")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} | {RHS}`",
@@ -293,7 +293,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// let expected = BooleanVector(vec![false, true, true, false]);
 /// assert_eq!(bv1 ^ bv2, expected);
 /// ```
-//#[lang = "bitxor"]
+#[lang = "bitxor"]
 #[doc(alias = "^")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} ^ {RHS}`",
@@ -382,7 +382,7 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// assert_eq!(SpinVector { vec: vec![0, 1, 2, 3, 4] } << 2,
 ///            SpinVector { vec: vec![2, 3, 4, 0, 1] });
 /// ```
-//#[lang = "shl"]
+#[lang = "shl"]
 #[doc(alias = "<<")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} << {RHS}`",
@@ -492,7 +492,7 @@ shl_impl_all! { u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
 /// assert_eq!(SpinVector { vec: vec![0, 1, 2, 3, 4] } >> 2,
 ///            SpinVector { vec: vec![3, 4, 0, 1, 2] });
 /// ```
-//#[lang = "shr"]
+#[lang = "shr"]
 #[doc(alias = ">>")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} >> {RHS}`",
@@ -609,7 +609,7 @@ shr_impl_all! { u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
 /// let expected = BooleanVector(vec![true, false, false, false]);
 /// assert_eq!(bv, expected);
 /// ```
-//#[lang = "bitand_assign"]
+#[lang = "bitand_assign"]
 #[doc(alias = "&=")]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} &= {Rhs}`",
@@ -659,7 +659,7 @@ bitand_assign_impl! { bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
 /// prefs |= PersonalPreferences { likes_cats: false, likes_dogs: true };
 /// assert_eq!(prefs, PersonalPreferences { likes_cats: true, likes_dogs: true });
 /// ```
-//#[lang = "bitor_assign"]
+#[lang = "bitor_assign"]
 #[doc(alias = "|=")]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} |= {Rhs}`",
@@ -709,7 +709,7 @@ bitor_assign_impl! { bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
 /// personality ^= Personality { has_soul: true, likes_knitting: true };
 /// assert_eq!(personality, Personality { has_soul: true, likes_knitting: false});
 /// ```
-//#[lang = "bitxor_assign"]
+#[lang = "bitxor_assign"]
 #[doc(alias = "^=")]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} ^= {Rhs}`",
@@ -757,7 +757,7 @@ bitxor_assign_impl! { bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
 /// scalar <<= 2;
 /// assert_eq!(scalar, Scalar(16));
 /// ```
-//#[lang = "shl_assign"]
+#[lang = "shl_assign"]
 #[doc(alias = "<<=")]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} <<= {Rhs}`",
@@ -826,7 +826,7 @@ shl_assign_impl_all! { u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
 /// scalar >>= 2;
 /// assert_eq!(scalar, Scalar(4));
 /// ```
-//#[lang = "shr_assign"]
+#[lang = "shr_assign"]
 #[doc(alias = ">>=")]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
 #[rustc_on_unimplemented(message="no implementation for `{Self} >>= {Rhs}`",
