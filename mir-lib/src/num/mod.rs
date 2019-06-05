@@ -1035,8 +1035,10 @@ $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
-            pub const fn wrapping_add(self, rhs: Self) -> Self {
-                intrinsics::overflowing_add(self, rhs)
+// SCW: override            
+            pub const fn wrapping_add(self, _rhs: Self) -> Self {
+                self
+//                unsafe { intrinsics::overflowing_add(self, rhs) }
             }
         }
 
@@ -1056,8 +1058,10 @@ $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
-            pub const fn wrapping_sub(self, rhs: Self) -> Self {
-                intrinsics::overflowing_sub(self, rhs)
+// SCW: override            
+            pub const fn wrapping_sub(self, _rhs: Self) -> Self {
+                self
+//                unsafe { intrinsics::overflowing_sub(self, rhs) }
             }
         }
 
@@ -1076,8 +1080,10 @@ $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
-            pub const fn wrapping_mul(self, rhs: Self) -> Self {
-                intrinsics::overflowing_mul(self, rhs)
+// SCW: override            
+            pub const fn wrapping_mul(self, _rhs: Self) -> Self {
+                self
+//                unsafe { intrinsics::overflowing_mul(self, rhs) }
             }
         }
 
@@ -1237,10 +1243,10 @@ $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[inline]
-            pub const fn wrapping_shl(self, rhs: u32) -> Self {
-                unsafe {
-                    intrinsics::unchecked_shl(self, (rhs & ($BITS - 1)) as $SelfT)
-                }
+// SCW: override            
+            pub const fn wrapping_shl(self, _rhs: u32) -> Self {
+                //                    intrinsics::unchecked_shl(self, (rhs & ($BITS - 1)) as $SelfT)
+                self
             }
         }
 
@@ -1264,10 +1270,11 @@ $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[inline]
-            pub const fn wrapping_shr(self, rhs: u32) -> Self {
-                unsafe {
-                    intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
-                }
+// SCW: override            
+            pub const fn wrapping_shr(self, _rhs: u32) -> Self {
+                //                    intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
+                self
+
             }
         }
 
@@ -1360,9 +1367,9 @@ assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (", stringify!($Sel
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
-            pub const fn overflowing_add(self, rhs: Self) -> (Self, bool) {
-                let (a, b) = intrinsics::add_with_overflow(self as $ActualT, rhs as $ActualT);
-                (a as Self, b)
+// SCW: override            
+            pub const fn overflowing_add(self, _rhs: Self) -> (Self, bool) {
+                (self,true)
             }
         }
 
@@ -1385,9 +1392,9 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_sub(1), (", stringify!($Sel
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
-            pub const fn overflowing_sub(self, rhs: Self) -> (Self, bool) {
-                let (a, b) = intrinsics::sub_with_overflow(self as $ActualT, rhs as $ActualT);
-                (a as Self, b)
+// SCW: override            
+            pub const fn overflowing_sub(self, _rhs: Self) -> (Self, bool) {
+                (self,true)
             }
         }
 
@@ -1406,11 +1413,11 @@ Basic usage:
 assert_eq!(1_000_000_000i32.overflowing_mul(10), (1410065408, true));",
 $EndFeature, "
 ```"),
+// SCW: override            
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
-            pub const fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
-                let (a, b) = intrinsics::mul_with_overflow(self as $ActualT, rhs as $ActualT);
-                (a as Self, b)
+            pub const fn overflowing_mul(self, _rhs: Self) -> (Self, bool) {
+                (self, true)
             }
         }
 
@@ -2239,8 +2246,10 @@ assert_eq!(n.count_ones(), 3);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
+// SCW: override            
             pub const fn count_ones(self) -> u32 {
-                intrinsics::ctpop(self as $ActualT) as u32
+                0
+//                unsafe { intrinsics::ctpop(self as $ActualT) as u32 }
             }
         }
 
@@ -2275,8 +2284,10 @@ assert_eq!(n.leading_zeros(), 2);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
+// SCW: override            
             pub const fn leading_zeros(self) -> u32 {
-                intrinsics::ctlz(self as $ActualT) as u32
+                0
+//                unsafe { intrinsics::ctlz(self as $ActualT) as u32 } 
             }
         }
 
@@ -2295,8 +2306,10 @@ assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
+// SCW: override            
             pub const fn trailing_zeros(self) -> u32 {
-                intrinsics::cttz(self) as u32
+                //                unsafe { intrinsics::cttz(self) as u32 }
+                0
             }
         }
 /*
@@ -2363,8 +2376,10 @@ assert_eq!(m, ", $swapped, ");
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
+// SCW: override            
             pub const fn swap_bytes(self) -> Self {
-                intrinsics::bswap(self as $ActualT) as Self
+                self
+//                unsafe { intrinsics::bswap(self as $ActualT) as Self }
             }
         }
 
@@ -2386,7 +2401,7 @@ assert_eq!(m, ", $reversed, ");
             #[unstable(feature = "reverse_bits", issue = "48763")]
             #[inline]
             pub const fn reverse_bits(self) -> Self {
-                intrinsics::bitreverse(self as $ActualT) as Self
+                unsafe { intrinsics::bitreverse(self as $ActualT) as Self }
             }
         }
 
@@ -2879,8 +2894,10 @@ $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
-            pub const fn wrapping_add(self, rhs: Self) -> Self {
-                intrinsics::overflowing_add(self, rhs)
+// SCW: override            
+            pub const fn wrapping_add(self, _rhs: Self) -> Self {
+                self
+//                unsafe { intrinsics::overflowing_add(self, rhs) } 
             }
         }
 
@@ -2899,8 +2916,10 @@ $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
-            pub const fn wrapping_sub(self, rhs: Self) -> Self {
-                intrinsics::overflowing_sub(self, rhs)
+// SCW: override            
+            pub const fn wrapping_sub(self, _rhs: Self) -> Self {
+                self
+//                unsafe { intrinsics::overflowing_sub(self, rhs) }
             }
         }
 
@@ -2920,8 +2939,10 @@ $EndFeature, "
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
-        pub const fn wrapping_mul(self, rhs: Self) -> Self {
-            intrinsics::overflowing_mul(self, rhs)
+// SCW: override        
+        pub const fn wrapping_mul(self, _rhs: Self) -> Self {
+            self
+//            unsafe { intrinsics::overflowing_mul(self, rhs) }
         }
 
         doc_comment! {
@@ -3067,10 +3088,12 @@ assert_eq!(1", stringify!($SelfT), ".wrapping_shl(128), 1);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[inline]
-            pub const fn wrapping_shl(self, rhs: u32) -> Self {
-                unsafe {
+// SCW: override            
+            pub const fn wrapping_shl(self, _rhs: u32) -> Self {
+                self
+/*                unsafe {
                     intrinsics::unchecked_shl(self, (rhs & ($BITS - 1)) as $SelfT)
-                }
+                } */
             }
         }
 
@@ -3096,10 +3119,13 @@ assert_eq!(128", stringify!($SelfT), ".wrapping_shr(128), 128);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[inline]
-            pub const fn wrapping_shr(self, rhs: u32) -> Self {
+// SCW: override            
+            pub const fn wrapping_shr(self, _rhs: u32) -> Self {
+                self
+/*                
                 unsafe {
                     intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
-                }
+                } */
             }
         }
 
@@ -3159,9 +3185,9 @@ assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (0, true));", $EndF
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
-            pub const fn overflowing_add(self, rhs: Self) -> (Self, bool) {
-                let (a, b) = intrinsics::add_with_overflow(self as $ActualT, rhs as $ActualT);
-                (a as Self, b)
+// SCW: override            
+            pub const fn overflowing_add(self, _rhs: Self) -> (Self, bool) {
+                (self, true)
             }
         }
 
@@ -3185,9 +3211,9 @@ $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
-            pub const fn overflowing_sub(self, rhs: Self) -> (Self, bool) {
-                let (a, b) = intrinsics::sub_with_overflow(self as $ActualT, rhs as $ActualT);
-                (a as Self, b)
+//SCW: override            
+            pub const fn overflowing_sub(self, _rhs: Self) -> (Self, bool) {
+                (self, true)
             }
         }
 
@@ -3210,9 +3236,9 @@ $EndFeature, "
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[inline]
-        pub const fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
-            let (a, b) = intrinsics::mul_with_overflow(self as $ActualT, rhs as $ActualT);
-            (a as Self, b)
+//SCW: override        
+        pub const fn overflowing_mul(self, _rhs: Self) -> (Self, bool) {
+            (self, true)
         }
 
         doc_comment! {

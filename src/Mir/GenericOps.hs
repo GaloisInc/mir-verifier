@@ -437,7 +437,9 @@ fnType ati mn
 
 -- A CStyle ADT is one that is an enumeration of numeric valued options
 -- containing no data
+-- (NOTE: types without variants, such as PhantomData, are not enums)
 isCStyle :: Adt -> Bool
+isCStyle (Adt _ []) = False
 isCStyle (Adt _ variants) = all isConst variants where
     isConst (Variant _ _ [] ConstKind) = True
     isConst _ = False
@@ -464,7 +466,8 @@ markCStyleTy (ads,s) (TyAdt n ps)  | Just adt <- Map.lookup n ads =
    if ps == Substs [] then
       TyCustom (CEnum n (adtIndices adt s))
    else
-      error "Cannot have params to C-style enum!"
+      --TyAdt n ps
+      error $ "Cannot have params to C-style enum: " ++ show (TyAdt n ps)
 markCStyleTy s ty = to (markCStyle' s (from ty))
 
 --------------------------------------------------------------------------------------

@@ -171,7 +171,7 @@ impl f32 {
     #[inline]
     fn abs_private(self) -> f32 {
         //f32::from_bits(self.to_bits() & 0x7fff_ffff)
-        intrinsics::abort()
+        unsafe { intrinsics::abort() }
     }
 
     /// Returns `true` if this value is positive infinity or negative infinity, and
@@ -247,7 +247,7 @@ impl f32 {
 //SCW: override this    
     pub fn is_normal(self) -> bool {
         //        self.classify() == FpCategory::Normal
-        return true
+        unsafe { intrinsics::abort() }        
     }
 
     /// Returns the floating point category of the number. If only one property
