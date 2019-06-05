@@ -70,7 +70,8 @@ runCrux cachedLib rustFile outHandle = do
     let options = (CruxOpts.defaultCruxOptions { CruxOpts.inputFile = rustFile,
                                                  CruxOpts.simVerbose = 0,
                                                  CruxOpts.goalTimeout = 120 } ,
-                   Mir.defaultMirOptions { Mir.cachedStdLib = Nothing -- Just cachedLib
+                   Mir.defaultMirOptions { Mir.cachedStdLib = Just cachedLib
+                                         , Mir.assertFalse = True -- replace translation errors with "assert false"
                                          , Mir.useStdLib = True } )
     let ?outputConfig = Crux.OutputConfig False outHandle outHandle
     Crux.check options
@@ -78,7 +79,7 @@ runCrux cachedLib rustFile outHandle = do
 cruxOracleTest :: Mir.CachedStdLib -> FilePath -> String -> (String -> IO ()) -> Assertion
 cruxOracleTest cachedLib dir name step = do
 
-  step "Compiling and running oracle program"
+  --step "Compiling and running oracle program"
   oracleOut <- compileAndRun dir name >>= \case
     Nothing -> assertFailure "failed to compile and run"
     Just out -> return out
@@ -87,7 +88,8 @@ cruxOracleTest cachedLib dir name step = do
   step ("Oracle output: " ++ orOut)
 
   let rustFile = dir </> name <.> "rs"
-  
+
+  --step "Translating and simulating with crux"
   cruxOutFull <- withSystemTempFile name $ \tempName h -> do
     runCrux cachedLib rustFile h
     hClose h
@@ -167,8 +169,9 @@ main = defaultMain =<< suite
 
 suite :: IO TestTree
 suite = do
+  
   let ?debug = 0
-  let ?assertFalseOnError = False
+  let ?assertFalseOnError = True
   halloc <- C.newHandleAllocator
   prims  <- liftIO $ loadPrims True
   pmir   <- stToIO $ translateMIR mempty prims halloc
@@ -243,3 +246,5 @@ parseRustFV ft = panic <|> (Just <$> p)
           FV.FTVec _n _elt -> error "unimplemented"
           FV.FTTuple _elts -> error "unimplemented"
           FV.FTRec _fields -> error "unimplemented"
+
+--  LocalWords:  newHandleAllocator cachedLib

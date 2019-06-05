@@ -317,9 +317,12 @@ wrapping_sub = ( (["num","{{impl}}"], "wrapping_sub", []),
 
 discriminant_value ::  (ExplodedDefId, CustomRHS)
 discriminant_value = ((["intrinsics"],"discriminant_value", []),
-  \ _substs -> Just $ CustomOp $ \ opTys ops ->
+  \ _substs -> Just $ CustomOp $ \ opTys ops -> do
       case (opTys,ops) of
-        ([TyCustom (CEnum _adt _i)], [e]) -> return e
+        ([TyRef (TyCustom (CEnum _adt _i)) Immut], [MirExp C.IntegerRepr e]) -> do
+          return (MirExp knownRepr $ R.App (E.IntegerToBV (knownRepr :: NatRepr 64) e))
+        ([TyCustom (CEnum _adt _i)], [MirExp C.IntegerRepr e]) -> do
+          return (MirExp knownRepr $ R.App (E.IntegerToBV (knownRepr :: NatRepr 64) e))          
         ([_],[e]) -> do (MirExp C.NatRepr idx) <- accessAggregate e 0
                         return $ (MirExp knownRepr $ R.App (E.IntegerToBV (knownRepr :: NatRepr 64)
                                                                   (R.App (E.NatToInteger idx))))

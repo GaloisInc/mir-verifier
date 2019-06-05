@@ -163,7 +163,9 @@ tyToRepr t0 = case t0 of
   
   M.TyAdt _defid _tyargs -> Some taggedUnionRepr
   M.TyDowncast _adt _i   -> Some taggedUnionRepr
-  M.TyFloat _ -> Some C.RealValRepr
+  -- FIXME, floats should be modeled by Crucible Floating point values
+  M.TyFloat M.F32 -> Some C.RealValRepr
+  M.TyFloat M.F64 -> Some C.RealValRepr  
   M.TyParam i -> case somePeano i of
     Just (Some nr) -> Some (C.VarRepr nr) 
     Nothing        -> error "type params must be nonnegative"

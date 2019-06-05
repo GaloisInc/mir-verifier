@@ -191,11 +191,13 @@ impl f32 {
     /// assert!(inf.is_infinite());
     /// assert!(neg_inf.is_infinite());
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
+/*    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    
+SCW: need to change from Real -> Float
     pub fn is_infinite(self) -> bool {
         self.abs_private() == INFINITY
-    }
+    } */
 
     /// Returns `true` if this number is neither infinite nor `NaN`.
     ///
@@ -213,13 +215,15 @@ impl f32 {
     /// assert!(!inf.is_finite());
     /// assert!(!neg_inf.is_finite());
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
+/*  #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+  SCW: need to change from Real to Float in mir-verifier    
     pub fn is_finite(self) -> bool {
         // There's no need to handle NaN separately: if self is NaN,
         // the comparison is not true, exactly as desired.
         self.abs_private() < INFINITY
     }
+*/
 
     /// Returns `true` if the number is neither zero, infinite,
     /// [subnormal][subnormal], or `NaN`.

@@ -73,6 +73,8 @@ import           Mir.Generator
 import           Mir.Generate(generateMIR, translateMIR, loadPrims)
 import           Mir.Trans(transStatics, RustModule(..))
 
+import Debug.Trace
+
 main :: IO ()
 main = Crux.main mirConf
 
@@ -177,8 +179,11 @@ simulateMIR execFeatures (cruxOpts, mirOpts) sym p = do
             return (mir, halloc)
         _ -> do
           halloc  <- C.newHandleAllocator
-          prims   <- liftIO $ loadPrims (useStdLib mirOpts)
-          mir     <- stToIO $ translateMIR mempty (prims <> col) halloc
+          prims      <- liftIO $ loadPrims (useStdLib mirOpts)
+          primModule <- let ?debug = 0 in
+                        let ?assertFalseOnError = True in
+                        stToIO $ translateMIR mempty prims halloc
+          mir        <- stToIO $ translateMIR (primModule^.rmCS) col halloc
           return (mir, halloc)
                     
   C.AnyCFG init_cfg <- stToIO $ transStatics (mir^.rmCS) halloc

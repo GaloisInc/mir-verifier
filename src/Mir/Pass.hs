@@ -55,8 +55,9 @@ rewriteCollection col =
     |> passRemoveUnknownPreds  -- remove predicates that we don't know anything about
     |> passTrace "initial"
     |> passAddDictionaryPreds  -- add predicates to trait member functions
+    |> passTrace "after dict preds"        
     |> passExpandSuperTraits   -- add supertrait items    
-    |> passTrace "after dict preds/expand super"    
+    |> passTrace "after expand super"    
     |> passAssociatedTypes     -- replace associated types with additional type parameters
     |> passTrace "after associated types translated"
     |> passMarkCStyle          -- figure out which ADTs are enums and mark them
@@ -113,15 +114,19 @@ defineTraitAdts traits = fmap traitToAdt traits where
 --------------------------------------------------------------------------------------
 --
 -- Most of the implementation of this pass is in GenericOps
-
+--
+-- remove (a) traits we don't know about and (b) we do know, but don't contain any items
 passRemoveUnknownPreds :: Pass
-passRemoveUnknownPreds col = modifyPreds ff col 
+passRemoveUnknownPreds col = modifyPreds (not . marker) col 
   where
+     marker did = case allTraits Map.!? did of
+       Just tr -> null (tr^.traitItems)
+       Nothing -> True   -- assume unknown traits are markers
      allTraits = ?mirLib^.traits <> col^.traits
-     ff did = Map.member did allTraits
 
 --------------------------------------------------------------------------------------
 
+-- lift a function over Fn's to a Pass
 toCollectionPass :: ([Fn] -> [Fn]) -> Pass
 toCollectionPass f col = col { _functions = (fromList (f (Map.elems (col^.functions)))) } where
     fromList :: [Fn] -> Map.Map DefId Fn

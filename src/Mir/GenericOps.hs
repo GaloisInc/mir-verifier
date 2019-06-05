@@ -325,7 +325,7 @@ abstractATs_Ty ati ty@(TyProjection d substs)
            -- return ty
            -- throw error for unknown Projections alone
            throwError $ fmt ty ++ " with unknown translation.\n"
-                     ++ "Dict is\n" ++ show (ppATDict (ati^.atDict))
+                     -- ++ "Dict is\n" ++ show (ppATDict (ati^.atDict))
 abstractATs_Ty s ty = (to <$> (abstractATs' s (from ty)))
 
 -- Add additional args to the substs for traits with atys
@@ -466,8 +466,8 @@ markCStyleTy (ads,s) (TyAdt n ps)  | Just adt <- Map.lookup n ads =
    if ps == Substs [] then
       TyCustom (CEnum n (adtIndices adt s))
    else
-      --TyAdt n ps
-      error $ "Cannot have params to C-style enum: " ++ show (TyAdt n ps)
+      TyAdt n ps
+      --error $ "Cannot have params to C-style enum: " ++ show (TyAdt n ps)
 markCStyleTy s ty = to (markCStyle' s (from ty))
 
 --------------------------------------------------------------------------------------

@@ -43,10 +43,21 @@ passExpandSuperTraits :: (?debug::Int, ?mirLib::Collection, HasCallStack) => Col
 passExpandSuperTraits col = col & traits %~ inheritSuperItems
                                 & impls  %~ inheritSuperImpls (?mirLib <> col)
 
-inheritSuperImpls :: Collection -> [TraitImpl] -> [TraitImpl]
+
+inMirLib :: (?debug::Int, ?mirLib::Collection, HasCallStack) => TraitRef -> Bool
+inMirLib (TraitRef did _ss) =
+  Map.member did (?mirLib ^. traits)
+
+inheritSuperImpls :: (?debug::Int, ?mirLib::Collection, HasCallStack) => Collection -> [TraitImpl] -> [TraitImpl]
 inheritSuperImpls col tis = Map.elems (go tis Map.empty) where
 
-  go :: [TraitImpl] -> Map TraitRef TraitImpl -> Map TraitRef TraitImpl
+  -- For a given trait reference, calculate all of its items 
+  init :: Map TraitRef TraitImpl
+  init = Map.fromList (fmap g (?mirLib ^. impls)) where
+     g :: TraitImpl -> (TraitRef, TraitImpl)
+     g ti = (ti^.tiTraitRef, ti)
+  
+  go :: HasCallStack => [TraitImpl] -> Map TraitRef TraitImpl -> Map TraitRef TraitImpl
   go trs done = if null this then done else go next step where
 
      -- divide impls into those we can process now (all supers are done)
@@ -54,14 +65,15 @@ inheritSuperImpls col tis = Map.elems (go tis Map.empty) where
      (this, next) = List.partition process trs
 
      -- we can process a traitimpl this step as long as we've already done its supertrait impls
+     -- or they are in the standard library
      process :: TraitImpl -> Bool
-     process ti = all (\n -> Map.member n done) (supers (ti^.tiTraitRef)) where
+     process ti = all (\n -> Map.member n done || inMirLib n) (supers (ti^.tiTraitRef)) where
 
      -- find all of the traitrefs for supertraits
      -- this is tricky because we need to get the correct set of type arguments to the trait.
      -- we get these from the predicates associated with the trait that correspond to the
      -- names in the superclass
-     supers :: TraitRef -> [TraitRef]
+     supers :: HasCallStack => TraitRef -> [TraitRef]
      supers tr@(TraitRef tn tys)
        | Nothing <- (col^.traits) Map.!? tn = []
             -- ignore supers we can't process error
@@ -77,22 +89,28 @@ inheritSuperImpls col tis = Map.elems (go tis Map.empty) where
         isSupPred _ = Nothing
 
 
-     addSupers :: TraitImpl -> (TraitRef, TraitImpl)
+     addSupers ::  HasCallStack => TraitImpl -> (TraitRef, TraitImpl)
      addSupers ti = (tr, ti & tiItems %~ (++ (concat superItems))) where
        tr         = ti^.tiTraitRef
        ss         = supers tr
-       superItems = map ((^.tiItems).(done Map.!)) ss
+       superItems = map getItems ss
+       getItems tr0 = case (Map.union done init) Map.!? tr0 of
+         Just tt -> tt ^.tiItems
+         Nothing -> (trace $ "Cannot find trait ref " ++ fmt tr0) []
 
      step = Map.union done (Map.fromList (map addSupers this))
 
-inheritSuperItems :: HasCallStack => Map TraitName Trait -> Map TraitName Trait
-inheritSuperItems traits =  Map.map nubTrait (go (Map.elems traits) Map.empty) where
-
+inheritSuperItems :: (?debug::Int, ?mirLib::Collection, HasCallStack) => Map TraitName Trait -> Map TraitName Trait
+inheritSuperItems trs =  Map.map nubTrait (go (Map.elems trs) libTraits) where
+  
+   -- start with the traits in mirLib as 'done'
+   libTraits = (?mirLib) ^. traits
+     
    -- remove duplicates
    nubTrait tr = tr & traitItems %~ List.nub
 
    -- go over all known traits, processing them in topological order
-   go :: [Trait] -> Map TraitName Trait -> Map TraitName Trait
+   go :: HasCallStack => [Trait] -> Map TraitName Trait -> Map TraitName Trait
    go trs done = if null this then done else go next step where
 
       -- divide traits into those we can process now and those for later
@@ -100,16 +118,16 @@ inheritSuperItems traits =  Map.map nubTrait (go (Map.elems traits) Map.empty) w
 
       -- we can process a trait as long as we've already done its supers
       process :: Trait -> Bool
-      process tr = all (\n -> Map.member n done) (tail (tr^.traitSupers))
+      process tr = all (\n -> Map.member n done || n == tr ^.traitName) (tr^.traitSupers)
 
-      addSupers :: Trait -> (TraitName, Trait)
+      addSupers ::  HasCallStack => Trait -> (TraitName, Trait)
       addSupers tr = (tr^.traitName, tr & traitItems %~ (++ newItems)) where
 
         
         newItems = concat (map superItems superNames)
 
         superNames :: [TraitName]
-        superNames = tail (tr^.traitSupers)
+        superNames = filter (/= (tr ^.traitName)) (tr^.traitSupers)
 
         -- NOTE: we only add items from supertraits that we have a
         -- predicate for in the trait because we need to substitute
@@ -120,7 +138,7 @@ inheritSuperItems traits =  Map.map nubTrait (go (Map.elems traits) Map.empty) w
         -- incorporated into the direct supertraits).
         -- However, this could cause an issue if a direct supertrait
         -- doesn't include a predicate.
-        superItems :: TraitName -> [TraitItem]
+        superItems :: HasCallStack => TraitName -> [TraitItem]
         superItems superName =
           case findSuperPredSubsts superName (tr^.traitPredicates) of
             Nothing -> []

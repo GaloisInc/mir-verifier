@@ -112,7 +112,7 @@ instance Pretty CustomTy where
     pretty (BoxTy ty)  = text "box"  <> parens (pretty ty)
     pretty (VecTy ty)  = text "vec"  <> parens (pretty ty)
     pretty (IterTy ty) = text "iter" <> parens (pretty ty)
-    pretty (CEnum did _) = pr_id did
+    pretty (CEnum did _) = text "CE::" <> pr_id did
 
 instance Pretty Var where
     pretty (Var vn _vm _vty _vs _) = pretty vn 
@@ -355,7 +355,7 @@ instance Pretty Trait where
     let sd = case supers of
               [ _self ] -> mempty
               ( _self : rest ) -> pretty rest
-              [] -> error "BUG: supertrait list should always start with self"
+              [] -> mempty -- error "BUG: supertrait list should always start with self"
         ps = pparams params
     in                    
         vcat [text "trait" <+> pretty name <+> ps <+> sd <+> ppreds preds <+> lbrace ,
