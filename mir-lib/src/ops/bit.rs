@@ -65,8 +65,8 @@ macro_rules! not_impl {
     )*)
 }
 
-not_impl! { bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
-//not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+//not_impl! { bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
+not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The bitwise AND operator `&`.
 ///
@@ -433,8 +433,8 @@ macro_rules! shl_impl_all {
     )*)
 }
 
-shl_impl_all! { u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
-//shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
+//shl_impl_all! { u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
+shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 
 /// The right shift operator `>>`. Note that because this trait is implemented
 /// for all integer types with multiple right-hand-side types, Rust's type
@@ -532,19 +532,19 @@ macro_rules! shr_impl_all {
         shr_impl! { $t, u32 }
         shr_impl! { $t, u64 }
         shr_impl! { $t, u128 }
-        //shr_impl! { $t, usize }
+        shr_impl! { $t, usize }
 
         shr_impl! { $t, i8 }
         shr_impl! { $t, i16 }
         shr_impl! { $t, i32 }
         shr_impl! { $t, i64 }
         shr_impl! { $t, i128 }
-        //shr_impl! { $t, isize }
+        shr_impl! { $t, isize }
     )*)
 }
 
-shr_impl_all! { u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
-//shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
+//shr_impl_all! { u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
+shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 
 /// The bitwise AND assignment operator `&=`.
 ///

@@ -11,6 +11,8 @@
 use mem;
 use num::FpCategory;
 
+use intrinsics;
+
 /// The radix or base of the internal representation of `f32`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const RADIX: u32 = 2;
@@ -168,7 +170,8 @@ impl f32 {
     // private use internally.
     #[inline]
     fn abs_private(self) -> f32 {
-        f32::from_bits(self.to_bits() & 0x7fff_ffff)
+        //f32::from_bits(self.to_bits() & 0x7fff_ffff)
+        intrinsics::abort()
     }
 
     /// Returns `true` if this value is positive infinity or negative infinity, and
@@ -241,8 +244,10 @@ impl f32 {
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+//SCW: override this    
     pub fn is_normal(self) -> bool {
-        self.classify() == FpCategory::Normal
+        //        self.classify() == FpCategory::Normal
+        return true
     }
 
     /// Returns the floating point category of the number. If only one property
@@ -259,6 +264,7 @@ impl f32 {
     /// assert_eq!(num.classify(), FpCategory::Normal);
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
     /// ```
+    #[cfg(mem)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn classify(self) -> FpCategory {
         const EXP_MASK: u32 = 0x7f800000;
@@ -302,10 +308,12 @@ impl f32 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+//SCW: override this    
     pub fn is_sign_negative(self) -> bool {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
         // applies to zeros and NaNs as well.
-        self.to_bits() & 0x8000_0000 != 0
+        //        self.to_bits() & 0x8000_0000 != 0
+        false
     }
 
     /// Takes the reciprocal (inverse) of a number, `1/x`.

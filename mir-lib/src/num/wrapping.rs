@@ -449,6 +449,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// assert_eq!(n.rotate_left(32), m);
             /// ```
             #[inline]
+            #[cfg(rotate)]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn rotate_left(self, n: u32) -> Self {
                 Wrapping(self.0.rotate_left(n))
@@ -475,6 +476,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// assert_eq!(n.rotate_right(4), m);
             /// ```
             #[inline]
+            #[cfg(rotate)]            
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
             pub const fn rotate_right(self, n: u32) -> Self {
                 Wrapping(self.0.rotate_right(n))

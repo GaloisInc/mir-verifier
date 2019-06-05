@@ -1,7 +1,7 @@
 // SCW: from https://github.com/rust-lang/rust/blob/master/src/libcore/ops/try.rs
 // 4/15/19
 
-#![unstable(feature = "try_trait", issue = "42327")]
+#[unstable(feature = "try_trait", issue = "42327")]
 
 use result::Result;
 

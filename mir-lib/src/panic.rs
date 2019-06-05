@@ -39,7 +39,7 @@ use option::Option::{self,Some};
 pub struct PanicInfo<'a> {
 //    payload: &'a (dyn Any + Send),
 //    message: Option<&'a fmt::Arguments<'a>>,
-    location: Location<'a>,
+    location: Location<'a>
 }
 
 impl<'a> PanicInfo<'a> {

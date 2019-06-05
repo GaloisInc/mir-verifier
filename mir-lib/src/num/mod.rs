@@ -407,6 +407,7 @@ let m = ", $rot_result, ";
 
 assert_eq!(n.rotate_left(", $rot, "), m);
 ```"),
+            #[cfg(rotate)]
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
             pub const fn rotate_left(self, n: u32) -> Self {
@@ -431,6 +432,7 @@ let m = ", $rot_op, ";
 
 assert_eq!(n.rotate_right(", $rot, "), m);
 ```"),
+            #[cfg(rotate)]
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
             pub const fn rotate_right(self, n: u32) -> Self {

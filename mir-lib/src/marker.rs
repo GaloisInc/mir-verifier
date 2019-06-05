@@ -584,7 +584,7 @@ pub struct PhantomData<T:?Sized>;
 impls! { PhantomData }
 
 mod impls {
-    use marker::{Send,Sized,Sync};
+//    use marker::{Send,Sized,Sync};
     
     #[stable(feature = "rust1", since = "1.0.0")]
     unsafe impl<T: Sync + ?Sized> Send for &T {}

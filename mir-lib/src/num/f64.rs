@@ -163,12 +163,15 @@ impl f64 {
         self != self
     }
 
+//SCW:override this
+    
     // FIXME(#50145): `abs` is publicly unavailable in libcore due to
     // concerns about portability, so this implementation is for
     // private use internally.
     #[inline]
     fn abs_private(self) -> f64 {
-        f64::from_bits(self.to_bits() & 0x7fff_ffff_ffff_ffff)
+        //        f64::from_bits(self.to_bits() & 0x7fff_ffff_ffff_ffff)
+        self
     }
 
     /// Returns `true` if this value is positive infinity or negative infinity, and
@@ -190,6 +193,7 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[cfg(mem)]    
     pub fn is_infinite(self) -> bool {
         self.abs_private() == INFINITY
     }
@@ -239,10 +243,12 @@ impl f64 {
     /// assert!(!lower_than_min.is_normal());
     /// ```
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+//SCW:override this    
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_normal(self) -> bool {
-        self.classify() == FpCategory::Normal
+        //        self.classify() == FpCategory::Normal
+        true
     }
 
     /// Returns the floating point category of the number. If only one property
@@ -260,6 +266,7 @@ impl f64 {
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(mem)]    
     pub fn classify(self) -> FpCategory {
         const EXP_MASK: u64 = 0x7ff0000000000000;
         const MAN_MASK: u64 = 0x000fffffffffffff;
@@ -308,10 +315,12 @@ impl f64 {
     /// assert!(!f.is_sign_negative());
     /// assert!(g.is_sign_negative());
     /// ```
+//SCW:override this    
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_sign_negative(self) -> bool {
-        self.to_bits() & 0x8000_0000_0000_0000 != 0
+        //        self.to_bits() & 0x8000_0000_0000_0000 != 0
+        false
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
