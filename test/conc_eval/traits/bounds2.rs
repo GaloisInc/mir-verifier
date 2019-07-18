@@ -1,5 +1,18 @@
-// FAIL: bad Any unpack
-// impl with multiple trait bounds on type parameter
+// FAIL: bad Any unpack (multiple trait bounds on type parameter unsupported)
+pub enum Opt<T> {
+    /// No value
+    No,
+    /// Some value `T`
+    So(T)
+}
+
+
+use Opt::*;
+
+
+pub trait Clo {
+    fn clo(&self) -> Self;
+}
 
 trait Foo {
     fn method(&self) -> i32;
@@ -18,8 +31,11 @@ trait Foo2 {
     }
 }
 
-#[derive(Clone, Copy)]
 struct S;
+
+impl Clo for S {
+    fn clo(&self) -> S { S }
+}
 
 impl Foo for S {
     fn method(&self) -> i32 { 1 }
@@ -34,10 +50,10 @@ impl Foo2 for S {
 }
 
 
-impl<T: Foo + Clone> Foo for Option<T> {
+impl<T: Foo + Clo> Foo for Opt<T> {
     fn method(&self) -> i32 {
-        if let Some(ref x) = *self {
-            x.clone().method()
+        if let So(ref x) = *self {
+            x.clo().method()
         } else {
             0
         }
@@ -48,9 +64,9 @@ impl<T: Foo + Clone> Foo for Option<T> {
 
 const ARG: i32 = 1;
 fn f(arg: i32) {
-    let some_s = Some(S);
+    let some_s = So(S);
     assert!(some_s.method() == 1);
-    assert!(<Option<S>>::static_method() == 2);
+    assert!(<Opt<S>>::static_method() == 2);
     assert!(some_s.default_method() == 3);
 }
 

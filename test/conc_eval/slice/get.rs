@@ -1,3 +1,4 @@
+// FAIL: need slice stdlib
 #![feature(never_type)]
 
 use std::process::exit;

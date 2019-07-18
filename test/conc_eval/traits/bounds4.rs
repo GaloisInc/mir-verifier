@@ -1,4 +1,13 @@
-// impl of trait with associated type with trait bound
+pub enum Opt<T> {
+    /// No value
+    No,
+    /// Some value `T`
+    So(T)
+}
+
+use Opt::*;
+    
+
 
 trait Foo {
     fn method(&self) -> i32;
@@ -33,11 +42,11 @@ impl Foo2 for S {
 }
 
 
-impl<T: Foo> Foo2 for Option<T> {
+impl<T: Foo> Foo2 for Opt<T> {
     type Assoc = i32;
     fn take_assoc(&self, a: Self::Assoc) -> i32 { a }
     fn give_assoc(&self, a: i32) -> Self::Assoc {
-        if let Some(ref x) = *self {
+        if let So(ref x) = *self {
             a + x.method() - 1
         } else {
             a
@@ -48,7 +57,7 @@ impl<T: Foo> Foo2 for Option<T> {
 
 const ARG: i32 = 1;
 fn f(arg: i32) {
-    let some_s = Some(S);
+    let some_s = So(S);
     assert!(some_s.take_assoc(1) == 1);
     assert!(some_s.give_assoc(1) == 1);
     assert!(some_s.default_with_assoc(1) == 1);

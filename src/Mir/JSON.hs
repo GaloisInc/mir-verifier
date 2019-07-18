@@ -170,6 +170,8 @@ instance FromJSON Collection where
         (foldr (\ x m -> Map.insertWithKey f (x^.traitName) x m) Map.empty traits)
         impls
         (foldr (\ x m -> Map.insertWithKey f (x^.sName) x m)     Map.empty statics)
+        emptyATDict
+        Map.empty
 
 
 instance FromJSON Fn where
@@ -535,11 +537,14 @@ instance FromJSON Trait where
       pg <- v .: "generics"
       pp <- v .: "predicates"
       params <- (withObject "Param" (\u -> u .: "params") pg)
+      preds  <- (withObject "Predicates" (\u -> u .: "predicates") pp)
       Trait <$> v .: "name"
             <*> v .: "items"
             <*> v .: "supertraits"
             <*> pure params
-            <*> (withObject "Predicates" (\u -> u .: "predicates") pp)
+            <*> pure preds
+            <*> v .: "items"
+            <*> pure preds
             <*> pure []
 
 instance FromJSON TraitItem where
@@ -606,20 +611,20 @@ instance FromJSON TraitRef where
 
 instance FromJSON TraitImplItem where
     parseJSON = withObject "TraitImplItem" $ \v -> do
-      pg <- v .: "generics"
-      pp <- v .: "predicates"
+--      pg <- v .: "generics"
+--      pp <- v .: "predicates"
       case HML.lookup "kind" v of
         Just (String "Method") -> TraitImplMethod
                                   <$> v .: "name"
                                   <*> v .:? "implements" .!= "unknown[0]::UNKNOWN[0]"
-                                  <*> (withObject "Param" (\u -> u .: "params") pg)
-                                  <*> (withObject "Predicates" (\u -> u .: "predicates") pp)
-                                  <*> v .: "signature"
+--                                  <*> (withObject "Param" (\u -> u .: "params") pg)
+--                                  <*> (withObject "Predicates" (\u -> u .: "predicates") pp)
+--                                  <*> v .: "signature"
         Just (String "Type") -> TraitImplType
                                   <$> v .: "name"  
                                   <*> v .:? "implements" .!= "unknown[0]::UNKNOWN[0]"
-                                  <*> (withObject "Param" (\u -> u .: "params") pg)
-                                  <*> (withObject "Predicates" (\u -> u .: "predicates") pp)
+--                                  <*> (withObject "Param" (\u -> u .: "params") pg)
+--                                  <*> (withObject "Predicates" (\u -> u .: "predicates") pp)
                                   <*> v .: "type"                                  
         Just (String x) -> fail $ "Incorrect format of the kind field in TraitImplItem: " ++ show x
         k -> fail $ "bad kind field in TraitImplItem " ++ show k
@@ -629,11 +634,14 @@ instance FromJSON TraitImpl where
     pg <- v .: "generics"
     pp <- v .: "predicates"
     tr <- v .: "trait_ref"
+    preds <- withObject "Predicates" (\u -> u .: "predicates") pp
     TraitImpl <$> v .: "name"
               <*> pure tr
               <*> pure tr
               <*> withObject "Param" (\u -> u .: "params") pg
-              <*> withObject "Predicates" (\u -> u .: "predicates") pp
+              <*> pure preds
+              <*> pure preds
+              <*> v .: "items"
               <*> v .: "items"
               <*> pure []
 

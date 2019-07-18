@@ -93,7 +93,7 @@ passAddTraitAdts col = col & adts %~ Map.union (defineTraitAdts (?mirLib^.traits
 -- The dictionary is a record (i.e. an ADT with a single variant) with
 -- a field for each method in the trait.
 -- Ignore non-method components of the trait
-defineTraitAdts :: Map TraitName Trait -> Map TraitName Adt
+defineTraitAdts :: HasCallStack => Map TraitName Trait -> Map TraitName Adt
 defineTraitAdts traits = fmap traitToAdt traits where
    traitToAdt :: Trait -> Adt
    traitToAdt tr = do

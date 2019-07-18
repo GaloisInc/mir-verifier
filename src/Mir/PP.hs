@@ -351,7 +351,7 @@ instance Pretty TraitItem where
   pretty (TraitConst name ty)     = text "const" <+> pr_id name <> colon <> pretty ty <> semi
 
 instance Pretty Trait where
-  pretty (Trait name items supers params preds _numParams) =
+  pretty (Trait name items supers params preds _ _ _) =
     let sd = case supers of
               [ _self ] -> mempty
               ( _self : rest ) -> pretty rest
@@ -393,10 +393,9 @@ instance Pretty TraitImpl where
           rbrace]
 
 instance Pretty TraitImplItem where
-  pretty (TraitImplMethod nm timpls _params _preds sig)  =
-    pretty nm <+> text "of type" <+> pretty sig <+>
-       text "implements" <+> pretty timpls
-  pretty (TraitImplType nm timpls _params _preds ty) =
+  pretty (TraitImplMethod nm timpls)  =
+    pretty nm <+> text "implements" <+> pretty timpls 
+  pretty (TraitImplType nm timpls ty) =
     text "type" <+> pretty nm <+> pretty timpls <+> text "=" <+> pretty ty
 
 instance Pretty Static where

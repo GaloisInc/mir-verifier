@@ -1,3 +1,4 @@
+// FAIL: need slice stdlib
 fn g(xs: &mut [u8]) {
     xs[0] = xs[0] + 1;
     xs[1] = xs[1] + 1;

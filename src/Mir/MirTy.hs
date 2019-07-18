@@ -121,7 +121,7 @@ getTraitImplementation col name = do
           TraitRef tn (Substs (subs ++ assocs))
             where
               assocs = Maybe.mapMaybe getTy tiis
-              getTy (TraitImplType _ _ _ _ ty) = Just ty
+              getTy (TraitImplType _ _ ty) = Just ty
               getTy _ = Nothing
 
     -- find all traitImplItems with the same name 

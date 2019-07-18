@@ -12,11 +12,13 @@ import Mir.Mir
 import Mir.DefId
 import Mir.MirTy
 import Mir.GenericOps
+import Mir.PP
 
-
+import Debug.Trace
 
 --------------------------------------------------------------------------------------
 -- Some functions need additional predicates because they are trait implementations
+-- 
 -- This pass adds those predicates to trait declarations and then uses those to add them
 -- to function implementations
 -- 
@@ -31,7 +33,10 @@ passAddDictionaryPreds col = col1 & functions %~ fmap addTraitPreds  where
                 (Substs [TyParam (toInteger i) | i <- [0 .. ((length (tn^.traitParams)) - 1)] ])
 
   addThisPred :: Trait -> Trait
-  addThisPred trait = trait & traitItems %~ map (addThis (mkPred trait))
+  addThisPred trait =
+         traitWithPreds & traitPreItems .~ (traitWithPreds ^. traitItems)
+       where
+         traitWithPreds = trait & traitItems %~ map (addThis (mkPred trait))
 
   -- add predicates to trait methods
   addThis :: Predicate -> TraitItem -> TraitItem
@@ -49,7 +54,7 @@ passAddDictionaryPreds col = col1 & functions %~ fmap addTraitPreds  where
   -- determine the methods that are implementation methods
   -- and the new predicates they should satisfy (== preds for the traits that they impl)
   impls :: Map MethName [Predicate]
-  impls = implMethods' (?mirLib <> col1)
+  impls = implMethods' col1
 
   newPreds :: Fn -> [Predicate]
   newPreds fn = Map.findWithDefault [] (fn^.fname) impls 
@@ -61,39 +66,42 @@ findMethodItem mn (item@(TraitMethod did fsig):rest) =
 findMethodItem mn (_:rest) = findMethodItem mn rest
 findMethodItem mn [] = Nothing -- error $ "BUG: cannot find method " ++ fmt mn
 
-implMethods' :: HasCallStack => Collection -> Map MethName [Predicate]
+implMethods' :: (HasCallStack, ?mirLib::Collection) => Collection -> Map MethName [Predicate]
 implMethods' col = foldMap g (col^.impls) where
+  full = ?mirLib <> col
+  
   g :: TraitImpl -> Map MethName [Predicate]
-  g impl = foldMap g2 (impl^.tiItems) where
-     TraitRef tn ss = impl^.tiTraitRef
-     items = case (col^.traits) Map.!? tn of
-                 Just tr -> tr^.traitItems
+  g impl = foldMap g2 (impl^.tiPreItems) where
+     TraitRef tn ss = impl^.tiPreTraitRef
+     
+     items = case (full^.traits) Map.!? tn of
+                 Just tr -> tr^.traitPreItems
                  -- Ignore impls that we know nothing about
-                 Nothing -> []
+                 Nothing ->
+                   []
 
      g2 :: TraitImplItem -> Map MethName [Predicate]
-     g2 (TraitImplMethod mn ii _ preds _) =
+     g2 (TraitImplMethod mn ii) =
         case findMethodItem ii items of
           Just (TraitMethod _ sig) ->
-             Map.singleton mn (tySubst (ss <> (Substs $ TyParam <$> [0 .. ]))
-                               (sig^.fspredicates))
+            let preds = (tySubst (ss <> (Substs $ TyParam <$> [0 .. ])) (sig^.fspredicates))
+            in Map.singleton mn (filter (not . satisfied full) preds)
           _ ->
              Map.empty
              -- ignore unknown methods
              -- error $ "BUG: addDictionaryPreds: Cannot find method " ++ fmt ii ++ " in trait " ++ fmt tn
      g2 _ = Map.empty
 
-implMethods :: Collection -> Map MethName [(TraitName,Substs)]
-implMethods col = foldr g Map.empty (col^.functions) where
-  g fn m = foldr g2 m (getTraitImplementation col (fn^.fname)) where
-     g2 (TraitRef traitName substs, _tii) m 
-         = Map.insertWith (++) (fn^.fname) [(traitName, substs)] m
-
-
 defaultMethods :: Collection -> Map MethName TraitName
 defaultMethods col = foldr g Map.empty (col^.traits) where
-  g trait m = foldr g2 m (trait^.traitItems) where
+  g trait m = foldr g2 m (trait^.traitPreItems) where
     g2 (TraitMethod methName _sig) m
        | Just _fn <- Map.lookup methName (col^.functions)
        = Map.insert (methName) (trait^.traitName) m
     g2 _ m = m
+
+-- Does this collection trivially satisfy the predicate?
+-- always sound to return False
+satisfied :: Collection -> Predicate -> Bool
+satisfied col (TraitPredicate did ss) = False
+satisfied col _ = False

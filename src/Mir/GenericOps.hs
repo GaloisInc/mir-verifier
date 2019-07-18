@@ -20,7 +20,7 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass, DefaultSignatures #-}
 {-# LANGUAGE FlexibleContexts, TypeOperators #-}
 
-{-# OPTIONS_GHC -Wincomplete-patterns -Wall -fno-warn-unticked-promoted-constructors #-}
+{-# OPTIONS_GHC -Wincomplete-patterns -Wall -fno-warn-unticked-promoted-constructors -fno-warn-orphans #-}
 
 module Mir.GenericOps where
 
@@ -38,7 +38,7 @@ import Control.Lens((^.),(&),(%~), makeLenses)
 import Mir.DefId
 import Mir.Mir
 import Mir.PP(fmt)
-import Text.PrettyPrint.ANSI.Leijen(Doc,(<+>),text,pretty,vcat)
+import Text.PrettyPrint.ANSI.Leijen((<+>),text,pretty)
 
 import GHC.Generics
 import GHC.Stack
@@ -48,19 +48,79 @@ import Debug.Trace
 --------------------------------------------------------------------------------------
 -- For associated types pass
 
-data ATDict = ATDict { atd_dict :: Map DefId (Substs -> Maybe Ty), atd_doc :: [Doc] }
-
-
 data ATInfo = ATInfo {
      _atStart :: Integer    -- ^ index to start renaming
    , _atNum   :: Integer    -- ^ number of ATs to insert
-   , _atDict  :: ATDict     -- ^ mapping for AssocTys
-   , _atCol   :: Collection -- ^ collection
-   , _atMeths :: Map MethName (FnSig,Trait)
-       -- ^ declared types of trait methods, plus params and AssocTys from the trait
+   , _atCol   :: Collection -- ^ collection, also includes ATDict
+   , _atMeths :: Map MethName (MethName, FnSig, Trait)
+       -- ^ maps methods with ATs to their
+       -- new names and types (plus enclosing trait)
+       -- so that we can translate method calls to include extra type args
    }
 
 makeLenses ''ATInfo
+
+------------------------------------------------------------------
+-- ATDict operations
+------------------------------------------------------------------
+
+lookupATDict :: HasCallStack => ATDict -> AssocTy -> Maybe Ty
+lookupATDict dict (d, ss) 
+    | Just f <- atd_dict dict Map.!? d
+    = f ss
+    | otherwise
+    = Nothing
+
+instance Semigroup ATDict where
+  (<>)    = unionATDict
+instance Monoid ATDict where
+  mempty  = emptyATDict
+  mappend = ((<>))
+
+
+insertATDict :: HasCallStack => AssocTy -> Ty -> ATDict -> ATDict
+insertATDict at ty d = d <> (concSingletonATDict at ty)
+
+concSingletonATDict :: HasCallStack => AssocTy -> Ty -> ATDict
+concSingletonATDict (did,ss) ty =
+  ATDict { atd_dict = Map.singleton did (\ss' -> case matchSubsts ss' ss of
+                                            Right m -> Just $ tySubst (mkSubsts m) ty
+                                            Left _e -> Nothing)
+         , atd_doc  = [pretty did <+> pretty ss <+> text "=" <+> pretty ty]
+         }
+
+singletonATDict :: HasCallStack => DefId -> (Substs -> Maybe Ty) -> ATDict
+singletonATDict did f =
+  ATDict { atd_dict = Map.singleton did f
+         , atd_doc  = [pretty did <+> "<abstract>"]
+         }
+
+extendATDict :: HasCallStack => DefId -> (Substs -> Maybe Ty) -> ATDict -> ATDict
+extendATDict d f dict =
+   dict <> (singletonATDict d f)
+
+unionATDict :: HasCallStack => ATDict -> ATDict -> ATDict
+unionATDict d1 d2 = ATDict
+  { atd_dict = 
+      Map.unionWith (\f1 f2 ss ->
+                        case f1 ss of Just ty -> Just ty
+                                      Nothing -> f2 ss)
+    (atd_dict d1) (atd_dict d2)
+    ,  atd_doc = (atd_doc d1 <> atd_doc d2)
+  }
+
+
+--------------------------------------------------------------------------------------
+-- Semigroup / Monoid for Collection
+--------------------------------------------------------------------------------------
+
+instance Semigroup Collection where
+  (Collection f1 a1 t1 i1 s1 d1 m1 ) <> (Collection f2 a2 t2 i2 s2 d2 m2 ) =
+    Collection (f1 <> f2) (a1 <> a2) (t1 <> t2) (i1 <> i2) (s1 <> s2) (d1 <> d2) (m1 <> m2) 
+instance Monoid Collection where
+  mempty  = Collection mempty mempty mempty mempty mempty mempty mempty 
+  mappend = (<>)
+
 
 --------------------------------------------------------------------------------------
 --
@@ -247,58 +307,9 @@ mkSubsts m = Substs (map g [0 ..]) where
 
 
 
-
-lookupATDict :: HasCallStack => ATDict -> AssocTy -> Maybe Ty
-lookupATDict dict (d, ss) 
-    | Just f <- atd_dict dict Map.!? d
-    = f ss
-    | otherwise
-    = Nothing
-
-instance Semigroup ATDict where
-  (<>) = unionATDict
-instance Monoid ATDict where
-  mempty = emptyATDict
-  mappend = ((<>))
-
-emptyATDict :: ATDict
-emptyATDict = ATDict { atd_dict = Map.empty , atd_doc = [] }
-
-insertATDict :: HasCallStack => AssocTy -> Ty -> ATDict -> ATDict
-insertATDict at ty d = d <> (concSingletonATDict at ty)
-
-concSingletonATDict :: HasCallStack => AssocTy -> Ty -> ATDict
-concSingletonATDict (did,ss) ty =
-  ATDict { atd_dict = Map.singleton did (\ss' -> case matchSubsts ss' ss of
-                                            Right m -> Just $ tySubst (mkSubsts m) ty
-                                            Left _e -> Nothing)
-         , atd_doc  = [pretty did <+> pretty ss <+> text "=" <+> pretty ty]
-         }
-
-singletonATDict :: HasCallStack => DefId -> (Substs -> Maybe Ty) -> ATDict
-singletonATDict did f =
-  ATDict { atd_dict = Map.singleton did f
-         , atd_doc  = [pretty did <+> "<abstract>"]
-         }
-
-extendATDict :: HasCallStack => DefId -> (Substs -> Maybe Ty) -> ATDict -> ATDict
-extendATDict d f dict =
-   dict <> (singletonATDict d f)
-
-unionATDict :: HasCallStack => ATDict -> ATDict -> ATDict
-unionATDict d1 d2 = ATDict
-  { atd_dict = 
-      Map.unionWith (\f1 f2 ss ->
-                        case f1 ss of Just ty -> Just ty
-                                      Nothing -> f2 ss)
-    (atd_dict d1) (atd_dict d2)
-    ,  atd_doc = (atd_doc d1 <> atd_doc d2)
-  }
-  
-ppATDict :: ATDict -> Doc
-ppATDict d = vcat (atd_doc d)
-
-
+getImpls :: Collection -> TraitName -> [TraitImpl]
+getImpls col tn =
+  [ i | i <- col^.impls, let (TraitRef tn2 _ss) = (i^.tiTraitRef), tn == tn2]
 
 
 -- | Special case for Ty
@@ -313,32 +324,40 @@ abstractATs_Ty ati ty@(TyProjection d substs)
     = TyProjection d <$> abstractATs ati substs
     
     -- associated type, replace with new param    
-    | Just nty <- lookupATDict (ati^.atDict) (d,substs)
+    | Just nty <- lookupATDict (ati^.atCol .adict) (d,substs)
     = return nty
     
     -- try translating the substs
     | otherwise = do
        substs' <- abstractATs ati substs
-       case lookupATDict (ati^.atDict) (d,substs') of
+       case lookupATDict (ati^.atCol . adict) (d,substs') of
          Just nty -> return nty
-         Nothing ->
-           -- return ty
-           -- throw error for unknown Projections alone
-           throwError $ fmt ty ++ " with unknown translation.\n"
-                     -- ++ "Dict is\n" ++ show (ppATDict (ati^.atDict))
+         Nothing -> do
+           throwError ("WARNING: " ++ fmt ty ++ " with unknown translation.\n"++
+                      case (ati^.atCol . traits) Map.!? d of
+                        Just tr -> "found trait " ++ fmt tr ++
+                          "\n with impls " ++ concat (map fmt (getImpls (ati^.atCol) (getTraitName d)))
+                        Nothing ->
+                          "cannot find trait " ++ fmt (getTraitName d) ++ " in collection.")
+                      
+           --return ty
+
 abstractATs_Ty s ty = (to <$> (abstractATs' s (from ty)))
 
 -- Add additional args to the substs for traits with atys
 abstractATs_Predicate :: (HasCallStack, MonadError String m) => ATInfo -> Predicate -> m Predicate
 abstractATs_Predicate ati (TraitPredicate tn ss) 
-    | Just tr <- (ati^.atCol.traits) Map.!? tn
-    = do let ats  = map (\(n,ss') -> TyProjection n ss') (tr^.traitAssocTys)
+    | Just tr2 <- (ati^.atCol.traits) Map.!? tn
+    = do let ats  = map (\(n,ss') -> TyProjection n ss') (tr2^.traitAssocTys)
+         let ats' = Substs (tySubst ss ats)
          ss1  <- abstractATs ati ss
-         let ats' = tySubst ss1 ats
-         ss2  <- mapM (abstractATs ati) ats'
-         return $ TraitPredicate tn (ss1 <> Substs ss2)
+         ss2  <- abstractATs ati ats'
+         return $ TraitPredicate (tr2^.traitName) (ss1 <> ss2)
     | otherwise
-    = throwError $ "BUG: Found trait " ++ fmt tn ++ " with no info in collection."
+    = do
+        ss1 <- abstractATs ati ss
+        return $ TraitPredicate tn ss1
+
 abstractATs_Predicate ati (TraitProjection ty1 ty2)
     = TraitProjection <$> (abstractATs ati ty1) <*> (abstractATs ati ty2)
 --    = pure $ TraitProjection ty1 ty2
@@ -347,14 +366,15 @@ abstractATs_Predicate _ati UnknownPredicate = throwError "BUG: found UnknownPred
 -- Add extra arguments for associated types to a const function call
 -- NOTE: is this complete?
 abstractATs_ConstVal :: (HasCallStack, MonadError String m) => ATInfo -> ConstVal -> m ConstVal
-abstractATs_ConstVal ati (ConstFunction defid funsubst)
-  | Just (fs,mt) <- fnType ati defid
+abstractATs_ConstVal ati val@(ConstFunction defid funsubst)
+  | Just (nm, fs,mt) <- fnType ati defid
   = do
        -- remove any ats from the current substs
        funsubst1 <- abstractATs ati funsubst
 
        -- add ATs from trait (if any) to the appropriate place
        -- in the middle of the funsubst
+       
        funsubst2 <- case mt of
                      Nothing -> pure funsubst1
                      Just tr -> do
@@ -373,13 +393,17 @@ abstractATs_ConstVal ati (ConstFunction defid funsubst)
        -- add method ats to the end of the function subst
        let hsubst    = funsubst2 <> ats'
        
-       return $ ConstFunction defid hsubst
-         
-abstractATs_ConstVal ati val = to <$> (abstractATs' ati (from val))
+       return $ ConstFunction nm hsubst
+  | otherwise =
+    to <$> (abstractATs' ati (from val))    
+abstractATs_ConstVal ati val =
+
+  to <$> (abstractATs' ati (from val))
 
 abstractATs_FnSig :: (HasCallStack, MonadError String m) => ATInfo -> FnSig -> m FnSig
 abstractATs_FnSig ati (FnSig args ret gens preds atys) = do
-  let ati' = ati & atDict %~ mappend (mkAssocTyMap (toInteger (length gens)) atys)
+  let k    = toInteger (length gens)
+  let ati' = ati & atCol %~ addLocalATs k atys
   preds' <- abstractATs ati' preds
   args'  <- abstractATs ati' args
   ret'   <- abstractATs ati' ret
@@ -397,33 +421,39 @@ toParam (did,_substs) = Param (idText did)  -- do we need to include substs?
 
 -- | Create a mapping for associated types to type parameters, starting at index k
 -- For traits, k should be == length traitParams
-mkAssocTyMap :: Integer -> [AssocTy] -> ATDict
-mkAssocTyMap k assocs =
-  foldl (\m ((a,ss),ty) ->
-           let ati = ATInfo 0 0 m (error "no col") (error "only types")
-               ss' = case abstractATs ati ss of
-                       Left err -> trace ("WARNING " ++ err) ss
-                       Right ss2 -> ss2
-           in
-             insertATDict (a,ss') ty m) mempty zips where
-    zips = zip assocs (map TyParam [k ..])
-
+--
+-- NOTE: the substitutions in the ATs are first expanded, using the complete
+-- adict, extended in left-to-right order
+addLocalATs :: Integer -> [AssocTy] -> Collection -> Collection
+addLocalATs k assocs col = foldl go col zips where
+  
+  zips = zip assocs (map TyParam [k ..])
+  
+  go :: Collection -> (AssocTy, Ty) -> Collection
+  go c ((did, ss), ty) = c & adict %~ insertATDict (did , ss') ty where
+    ati = ATInfo 0 0 c (error "only types")
+    ss' = case abstractATs ati ss of
+      Left err  -> trace ("WARNING in addLocalATs:" ++ err ++ "\ndid<ss> is " ++ fmt did ++ fmt ss) ss
+      Right ss2 -> ss2
+    
+  
 lookupATs :: (MonadError String m) => ATInfo -> [AssocTy] -> m Substs
 lookupATs ati ats =
   Substs <$> abstractATs ati (map (\(a,b) -> TyProjection a b) ats)
 
 -- | Find the type of a function
 -- so that we know what new type arguments to add
-fnType :: ATInfo -> MethName -> Maybe (FnSig, Maybe Trait)
+-- Returns the name, signature and possible trait
+fnType :: ATInfo -> MethName -> Maybe (DefId, FnSig, Maybe Trait)
 fnType ati mn 
 
   -- normal function 
   | Just fn <- (ati^.atCol.functions) Map.!? mn
-  = Just (fn^.fsig, Nothing)
+  = Just (fn ^.fname, fn^.fsig, Nothing)
 
   -- trait method
-  | Just (s, tr) <- (ati^.atMeths) Map.!? mn
-  = Just (s, Just tr)
+  | Just (n, s, tr) <- (ati^.atMeths) Map.!? mn
+  = Just (n, s, Just tr)
   
   | otherwise
   = Nothing
@@ -493,21 +523,26 @@ modifyPreds_FnSig f fs = fs & fspredicates %~ filterPreds f
                             & fsarg_tys    %~ modifyPreds f
                             & fsreturn_ty  %~ modifyPreds f
                             
+                            
 modifyPreds_Trait :: RUPInfo -> Trait -> Trait
 modifyPreds_Trait f fs = fs & traitPredicates %~ filterPreds f
                             & traitItems      %~ modifyPreds f
                             & traitSupers     %~ filter f
+                            & traitPreItems   %~ modifyPreds f
+                            & traitPrePreds   %~ filterPreds f
 
 modifyPreds_TraitImpl :: RUPInfo -> TraitImpl -> TraitImpl
 modifyPreds_TraitImpl f fs = fs & tiPredicates %~ filterPreds f
+                                & tiPrePreds   %~ filterPreds f
                                 & tiItems      %~ modifyPreds f
+                                & tiPreItems   %~ modifyPreds f
                                 & tiTraitRef   %~ modifyPreds f 
 
-modifyPreds_TraitImplItem :: RUPInfo -> TraitImplItem -> TraitImplItem
-modifyPreds_TraitImplItem f fs@(TraitImplMethod {}) = fs & tiiPredicates %~ filterPreds f
-                                                         & tiiSignature  %~ modifyPreds f
-modifyPreds_TraitImplItem f fs@(TraitImplType {}) = fs & tiiPredicates %~ filterPreds f
-                                                       & tiiType       %~ modifyPreds f
+--modifyPreds_TraitImplItem :: RUPInfo -> TraitImplItem -> TraitImplItem
+--modifyPreds_TraitImplItem _f fs@(TraitImplMethod {}) = fs -- & tiiPredicates %~ filterPreds f
+                                                          -- & tiiSignature  %~ modifyPreds f
+--modifyPreds_TraitImplItem f fs@(TraitImplType {}) = fs & tiiPredicates %~ filterPreds f
+--                                                       & tiiType       %~ modifyPreds f
                                                        
 
 --------------------------------------------------------------------------------------
@@ -521,6 +556,16 @@ instance GenericOps Predicate where
                                                        
 -- special case for DefIds
 instance GenericOps DefId where
+  relocate          = id
+  markCStyle _      = id
+  tySubst    _      = id
+  replaceVar _ _    = id
+  replaceLvalue _ _ = id
+  numTyParams _     = 0
+  abstractATs _     = pure
+  modifyPreds _     = id
+
+instance GenericOps ATDict where
   relocate          = id
   markCStyle _      = id
   tySubst    _      = id
@@ -634,7 +679,7 @@ instance GenericOps TraitRef
 instance GenericOps TraitImpl where
   modifyPreds = modifyPreds_TraitImpl
 instance GenericOps TraitImplItem where
-  modifyPreds = modifyPreds_TraitImplItem
+
 instance GenericOps Promoted
 instance GenericOps Static
 

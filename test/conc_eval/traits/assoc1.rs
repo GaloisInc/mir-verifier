@@ -20,8 +20,8 @@ impl Foo2 for S {
 const ARG: i32 = 1;
 fn f(arg: i32) {
     let s = S;
-    assert!(s.take_assoc(1) == 1);
-    assert!(s.give_assoc(1) == 1);
+//    assert!(s.take_assoc(1) == 1);
+//    assert!(s.give_assoc(1) == 1);
     assert!(s.default_with_assoc(1) == 1);
 }
 

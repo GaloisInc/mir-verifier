@@ -3,7 +3,6 @@
 #![feature(core_intrinsics)]
 #![feature(doc_alias)]
 #![feature(exact_size_is_empty)]
-#![feature(i128_type)]
 #![feature(lang_items)]
 #![feature(never_type)]
 #![feature(on_unimplemented)]
@@ -20,7 +19,25 @@
 pub mod ops {
     #![stable(feature = "rust1", since = "1.0.0")]
 
-    mod function;
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub use self::function::*;
+    mod function {
+        #[stable(feature = "rust1", since = "1.0.0")]
+        pub trait Fn<Args> : FnMut<Args> {
+            #[stable(feature = "rust1", since = "1.0.0")]
+            fn call(&self, args: Args) -> Self::Output;
+        } 
+
+        #[stable(feature = "rust1", since = "1.0.0")]
+        pub trait FnMut<Args> : FnOnce<Args> {
+            #[stable(feature = "rust1", since = "1.0.0")]
+            fn call_mut(&mut self, args: Args) -> Self::Output;
+        } 
+        #[stable(feature = "rust1", since = "1.0.0")]
+        pub trait FnOnce<Args> {
+            #[stable(feature = "rust1", since = "1.0.0")]
+            type Output;
+
+            #[stable(feature = "rust1", since = "1.0.0")]
+            fn call_once(self, args: Args) -> Self::Output;
+        }
+    }
 }

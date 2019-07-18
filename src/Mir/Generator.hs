@@ -97,7 +97,7 @@ import           Mir.DefId
 import           Mir.Mir
 import           Mir.MirTy
 import           Mir.Intrinsics
-import           Mir.GenericOps(ATDict,tySubst,mkSubsts,matchSubsts)
+import           Mir.GenericOps(tySubst,mkSubsts,matchSubsts)
 import           Mir.PP
 
 import           Unsafe.Coerce(unsafeCoerce)
@@ -350,7 +350,7 @@ resolveStaticMethod methName substs traitName = do
           Just (traitImpl, unifier, traitImplItem) -> do
             hmap <- use (cs.handleMap)
             case hmap Map.!? (traitImplItem^.tiiName) of
-              Nothing -> return Nothing -- BUG: impls should all be in the handle map
+              Nothing -> mirFail $ "BUG: impls should all be in the handle map " ++ show (traitImplItem^.tiiName)
               Just mh -> do                
                 let ulen = case Map.lookupMax unifier of
                                   Just (k,_) -> k + 1
@@ -368,7 +368,7 @@ resolveStaticMethod methName substs traitName = do
                 return (Just (mh, ss' <> methSub))
        
 -- | Look for a static trait implementation in a particular Trait
-findItem :: HasCallStack => MethName -> Substs -> Trait -> MirGenerator h s ret (Maybe (TraitImpl, Map Integer Ty, TraitImplItem))
+findItem :: (HasCallStack) => MethName -> Substs -> Trait -> MirGenerator h s ret (Maybe (TraitImpl, Map Integer Ty, TraitImplItem))
 findItem methName traitSub trait = do
   db <- use debugLevel
   col <- use (cs.collection)
@@ -378,10 +378,18 @@ findItem methName traitSub trait = do
        , tn == trait^.traitName
        = (if db > 6 then trace $ "Comparing " ++ fmt traitSub ++ " with " ++ fmt ss else id) $
          case matchSubsts traitSub ss of
-                Right m  ->
-                  Just (ti, m)
+                Right m  -> 
+                  (if db > 6 then trace ("found it with " ++ show m) else id)
+                    (case ti^.tiPredicates of
+                       [] -> Just (ti, m)
+                       bnds -> if db > 1 then
+                                 trace ("WARNING: Unsupported feature, trait impl has bounds: " ++ fmt bnds)
+                                 Just (ti, m)
+                               else (Just (ti,m)))
                 Left _e -> Nothing           
-         | otherwise = Nothing
+         | otherwise =
+                  (if db > 6 then trace ("no match") else id)
+           Nothing
        
   case firstJust isImpl (col^.impls) of
     Nothing -> return Nothing

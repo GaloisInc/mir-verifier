@@ -1,4 +1,12 @@
 // impl with trait bound on type parameter
+pub enum Opt<T> {
+    /// No value
+    No,
+    /// Some value `T`
+    So(T)
+}
+
+use Opt::*;
 
 trait Foo {
     fn method(&self) -> i32;
@@ -33,9 +41,9 @@ impl Foo2 for S {
 }
 
 
-impl<T: Foo> Foo for Option<T> {
+impl<T: Foo> Foo for Opt<T> {
     fn method(&self) -> i32 {
-        if let Some(ref x) = *self {
+        if let So(ref x) = *self {
             x.method()
         } else {
             0
@@ -47,9 +55,9 @@ impl<T: Foo> Foo for Option<T> {
 
 const ARG: i32 = 1;
 fn f(arg: i32) {
-    let some_s = Some(S);
+    let some_s = So(S);
     assert!(some_s.method() == 1);
-    assert!(<Option<S>>::static_method() == 2);
+    assert!(<Opt<S>>::static_method() == 2);
     assert!(some_s.default_method() == 3);
 }
 

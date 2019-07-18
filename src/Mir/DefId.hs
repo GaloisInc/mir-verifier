@@ -132,6 +132,11 @@ data DefId = DefId {
 getTraitName :: DefId -> DefId
 getTraitName (DefId p n _e) = (DefId p n [])
 
+addSuffix :: Text -> DefId -> DefId
+addSuffix suff (DefId path (name,i) []) = DefId path (name <> suff, i) []
+addSuffix suff (DefId path name extra)  = DefId path (mangle name) (init extra ++ [ mangle (last extra) ]) where
+   mangle (n,i) = (n <> suff, i)
+
 
 isImpl :: DefId -> Bool
 isImpl defid =

@@ -32,13 +32,17 @@ module Mir.Mir where
 
 import qualified Data.ByteString as B
 import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 import Data.Text (Text)
 import Data.Vector (Vector)
 
 import Data.Semigroup(Semigroup(..))
 
 
+
 import Control.Lens(makeLenses, Simple, Lens, lens)
+import Text.PrettyPrint.ANSI.Leijen(Doc,vcat)
+
 
 import GHC.Generics 
 import GHC.Stack
@@ -152,28 +156,30 @@ data Mutability
   deriving (Eq, Ord, Show, Generic)
 
 data Var = Var {
-    _varname :: Text,
-    _varmut :: Mutability,
-    _varty :: Ty,
-    _varscope :: VisibilityScope,
-    _varpos :: Text }
+      _varname  :: Text
+    , _varmut   :: Mutability
+    , _varty    :: Ty
+    , _varscope :: VisibilityScope
+    , _varpos   :: Text }
     deriving (Eq, Show, Generic)
 
 instance Ord Var where
     compare (Var n _ _ _ _) (Var m _ _ _ _) = compare n m
 
 data Collection = Collection {
-    _functions :: !(Map MethName Fn),
-    _adts      :: !(Map AdtName Adt),
-    _traits    :: !(Map TraitName Trait),
-    _impls     :: !([TraitImpl]),
-    _statics   :: !(Map DefId Static)
-} deriving (Show, Eq, Ord, Generic)
+      _functions :: !(Map MethName Fn)
+    , _adts      :: !(Map AdtName Adt)
+    , _traits    :: !(Map TraitName Trait)
+    , _impls     :: !([TraitImpl])
+    , _statics   :: !(Map DefId Static)
+    , _adict     :: !ATDict
+    , _traitATs  :: !(Map TraitName Trait)
+} deriving (Show, Generic)
 
 data Predicate =
   TraitPredicate {
-    _ptrait :: !DefId,
-    _psubst :: !Substs
+    _ptrait :: !DefId
+    , _psubst :: !Substs
     }
   | TraitProjection {
       _plhs    :: !Ty
@@ -428,6 +434,8 @@ data Trait = Trait { _traitName       :: !DefId,
                      _traitSupers     :: ![TraitName],
                      _traitParams     :: ![Param],
                      _traitPredicates :: ![Predicate],
+                     _traitPreItems   :: ![TraitItem],
+                     _traitPrePreds   :: ![Predicate],
                      _traitAssocTys   :: ![AssocTy]    -- new params added in a pre-pass
                    } 
     deriving (Eq, Ord, Show, Generic)
@@ -442,9 +450,6 @@ data TraitItem
 data TraitRef
     = TraitRef DefId Substs 
       -- Indicates the trait this impl implements.
-      -- The two `substs` gives the type arguments for the trait
-      -- both the initial arguments, plus any extra after the
-      -- associated types translation
     deriving (Show, Eq, Ord, Generic)
 
 data TraitImpl
@@ -456,7 +461,9 @@ data TraitImpl
                 -- pre-AT translation trait ref
                 , _tiGenerics   :: [Param]
                 , _tiPredicates :: [Predicate]
+                , _tiPrePreds   :: [Predicate]
                 , _tiItems      :: [TraitImplItem]
+                , _tiPreItems   :: [TraitImplItem]
                 , _tiAssocTys   :: [AssocTy]
                 }
     deriving (Show, Eq, Ord, Generic)
@@ -468,18 +475,11 @@ data TraitImplItem
                         -- The def path of the trait-item that this impl-item implements.
                         -- If there is no impl-item that `implements` a particular
                         -- trait-item, that means the impl uses the default from the trait.
-                      , _tiiGenerics :: [Param]
-                        -- Generics for the method itself.  
-                        -- should match the generics of the `fn`.  This consists of the generics
-                        -- inherited from the impl (if any), followed by any generics
-                        -- declared on the impl-item itself.
-                      , _tiiPredicates :: [Predicate]
-                      , _tiiSignature  :: FnSig
                       }
       | TraitImplType { _tiiName       :: DefId
                       , _tiiImplements :: DefId
-                      , _tiiGenerics   :: [Param]
-                      , _tiiPredicates :: [Predicate]
+--                      , _tiiGenerics   :: [Param]
+--                      , _tiiPredicates :: [Predicate]
                       , _tiiType       :: Ty
                       }
       deriving (Show, Eq, Ord, Generic)
@@ -502,8 +502,6 @@ type MethName  = DefId
 type AdtName   = DefId
 
 
-
-
 --- Other texts
 type ConstUsize = Integer
 type VisibilityScope = Text
@@ -511,6 +509,24 @@ type AssertMessage = Text
 type ClosureSubsts = Text
 type BasicBlockInfo = Text
 
+
+-- Associated types dictionary
+data ATDict = ATDict { atd_dict :: Map DefId (Substs -> Maybe Ty), atd_doc :: [Doc] }
+
+--------------------------------------------------------------------------------------
+
+ppATDict :: ATDict -> Doc
+ppATDict d = vcat (atd_doc d)
+
+emptyATDict :: ATDict
+emptyATDict = ATDict { atd_dict = Map.empty , atd_doc = [] }
+
+instance Show ATDict where
+  show d = show $ ppATDict d
+
+instance Eq Collection where
+  (Collection f1 a1 t1 i1 s1 _ _ ) == (Collection f2 a2 t2 i2 s2 _ _ ) = 
+    f1 == f2 && a1 == a2 && t1 == t2 && i1 == i2 &&  s1 == s2
 
 --------------------------------------------------------------------------------------
 -- Lenses
@@ -542,17 +558,6 @@ itemName = lens (\ti -> case ti of
                   TraitMethod _ s  -> TraitMethod nd s 
                   TraitType _ -> TraitType nd
                   TraitConst _ t -> TraitConst nd t)
-
---------------------------------------------------------------------------------------
--- Other instances for ADT types
---------------------------------------------------------------------------------------
-
-instance Semigroup Collection where
-  (Collection f1 a1 t1 i1 s1) <> (Collection f2 a2 t2 i2 s2) =
-    Collection (f1 <> f2) (a1 <> a2) (t1 <> t2) (i1 <> i2) (s1 <> s2)
-instance Monoid Collection where
-  mempty  = Collection mempty mempty mempty mempty mempty
-  mappend = (<>)
 
   
 

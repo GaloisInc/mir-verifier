@@ -1,3 +1,4 @@
+// FAIL: need slice stdlib
 use std::ops::IndexMut;
 
 fn g(ys: &mut [u8]) -> &mut [u8] {

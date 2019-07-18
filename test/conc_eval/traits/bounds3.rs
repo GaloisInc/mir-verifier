@@ -1,6 +1,16 @@
 // FAIL: trait bound with associated type
 // impl with trait bound having associated type
 
+pub enum Opt<T> {
+    /// No value
+    No,
+    /// Some value `T`
+    So(T)
+}
+
+use Opt::*;
+    
+
 trait Foo {
     fn method(&self) -> i32;
     fn static_method() -> i32;
@@ -34,9 +44,9 @@ impl Foo2 for S {
 }
 
 
-impl<T: Foo2> Foo for Option<T> {
+impl<T: Foo2> Foo for Opt<T> {
     fn method(&self) -> i32 {
-        if let Some(ref x) = *self {
+        if let So(ref x) = *self {
             x.take_assoc(x.give_assoc(1))
         } else {
             0
@@ -48,9 +58,9 @@ impl<T: Foo2> Foo for Option<T> {
 
 const ARG: i32 = 1;
 fn f(arg: i32) {
-    let some_s = Some(S);
+    let some_s = So(S);
     assert!(some_s.method() == 1);
-    assert!(<Option<S>>::static_method() == 2);
+    assert!(<Opt<S>>::static_method() == 2);
     assert!(some_s.default_method() == 3);
 }
 
