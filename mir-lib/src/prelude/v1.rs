@@ -33,11 +33,9 @@ pub use convert::{AsRef, AsMut, Into, From};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use default::Default;
-#[cfg(iter)]
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use iter::{Iterator, Extend, IntoIterator};
-#[cfg(iter)]
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use iter::{DoubleEndedIterator, ExactSizeIterator};

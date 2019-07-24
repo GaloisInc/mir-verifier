@@ -145,7 +145,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(iter)]
+
 use iter::{FromIterator, FusedIterator, TrustedLen};
 use {hint, mem, ops::{self, Deref}};
 use pin::Pin;
@@ -546,7 +546,7 @@ impl<T> Option<T> {
     /// let x: Option<u32> = None;
     /// assert_eq!(x.iter().next(), None);
     /// ```
-    #[cfg(iter)]
+
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
@@ -568,7 +568,7 @@ impl<T> Option<T> {
     /// let mut x: Option<u32> = None;
     /// assert_eq!(x.iter_mut().next(), None);
     /// ```
-   #[cfg(iter)]    
+
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<T> {
@@ -1023,7 +1023,7 @@ impl<T> Default for Option<T> {
     fn default() -> Option<T> { None }
 }
 
-#[cfg(iter)]
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> IntoIterator for Option<T> {
     type Item = T;
@@ -1048,7 +1048,7 @@ impl<T> IntoIterator for Option<T> {
     }
 }
 
-#[cfg(iter)]
+
 #[stable(since = "1.4.0", feature = "option_iter")]
 impl<'a, T> IntoIterator for &'a Option<T> {
     type Item = &'a T;
@@ -1059,7 +1059,7 @@ impl<'a, T> IntoIterator for &'a Option<T> {
     }
 }
 
-#[cfg(iter)]
+
 #[stable(since = "1.4.0", feature = "option_iter")]
 impl<'a, T> IntoIterator for &'a mut Option<T> {
     type Item = &'a mut T;
@@ -1101,7 +1101,7 @@ struct Item<A> {
     opt: Option<A>
 }
 
-/*
+
 impl<A> Iterator for Item<A> {
     type Item = A;
 
@@ -1224,7 +1224,7 @@ unsafe impl<A> TrustedLen for IterMut<'_, A> {}
 /// [`Some`]: enum.Option.html#variant.Some
 /// [`Option::into_iter`]: enum.Option.html#method.into_iter
 //#[derive(Clone, Debug)]
-#[derive(Debug)]
+#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<A> { inner: Item<A> }
 
@@ -1325,7 +1325,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
         }
     }
 }
- */
+
 
 /// The error type that results from applying the try operator (`?`) to a `None` value. If you wish
 /// to allow `x?` (where `x` is an `Option<T>`) to be converted into your error type, you can

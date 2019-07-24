@@ -240,9 +240,10 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use intrinsics;
+
 #[cfg(fmt)]
 use fmt;
-#[cfg(iter)]
 use iter::{FromIterator, FusedIterator, TrustedLen};
 use ops::{self, Deref};
 
@@ -554,7 +555,6 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.iter().next(), None);
     /// ```
     #[inline]
-    #[cfg(iter)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
         Iter { inner: self.as_ref().ok() }
@@ -580,7 +580,6 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.iter_mut().next(), None);
     /// ```
     #[inline]
-    #[cfg(iter)]    
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<T> {
         IterMut { inner: self.as_mut().ok() }
@@ -781,8 +780,9 @@ impl<T, E> Result<T, E> {
     }
 }
 
-#[cfg(fmt)]
-impl<T, E: fmt::Debug> Result<T, E> {
+
+//impl<T, E: fmt::Debug> Result<T, E> {
+impl<T,E> Result<T, E> {
     /// Unwraps a result, yielding the content of an [`Ok`].
     ///
     /// # Panics
@@ -811,7 +811,8 @@ impl<T, E: fmt::Debug> Result<T, E> {
     pub fn unwrap(self) -> T {
         match self {
             Ok(t) => t,
-            Err(e) => unwrap_failed("called `Result::unwrap()` on an `Err` value", e),
+            Err(e) =>
+                unwrap_failed("called `Result::unwrap()` on an `Err` value", e),
         }
     }
 
@@ -843,8 +844,8 @@ impl<T, E: fmt::Debug> Result<T, E> {
     }
 }
 
-#[cfg(fmt)]
-impl<T: fmt::Debug, E> Result<T, E> {
+//impl<T: fmt::Debug, E> Result<T, E> {
+impl<T, E> Result<T, E> {    
     /// Unwraps a result, yielding the content of an [`Err`].
     ///
     /// # Panics
@@ -1009,12 +1010,14 @@ impl<T, E> Result<Option<T>, E> {
     }
 }
 
-#[cfg(fmt)]
+
 // This is a separate function to reduce the code size of the methods
 #[inline(never)]
 #[cold]
-fn unwrap_failed<E: fmt::Debug>(msg: &str, error: E) -> ! {
-    panic!("{}: {:?}", msg, error)
+//fn unwrap_failed<E: fmt::Debug>(msg: &str, error: E) -> ! {
+fn unwrap_failed<E>(msg: &str, error: E) -> ! {    
+    unsafe { intrinsics::abort() }
+//    panic!("{}: {:?}", msg, error)
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1022,7 +1025,6 @@ fn unwrap_failed<E: fmt::Debug>(msg: &str, error: E) -> ! {
 /////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(iter)]
 impl<T, E> IntoIterator for Result<T, E> {
     type Item = T;
     type IntoIter = IntoIter<T>;
@@ -1051,7 +1053,6 @@ impl<T, E> IntoIterator for Result<T, E> {
 }
 
 #[stable(since = "1.4.0", feature = "result_iter")]
-#[cfg(iter)]
 impl<'a, T, E> IntoIterator for &'a Result<T, E> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
@@ -1062,7 +1063,6 @@ impl<'a, T, E> IntoIterator for &'a Result<T, E> {
 }
 
 #[stable(since = "1.4.0", feature = "result_iter")]
-#[cfg(iter)]
 impl<'a, T, E> IntoIterator for &'a mut Result<T, E> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
@@ -1075,7 +1075,7 @@ impl<'a, T, E> IntoIterator for &'a mut Result<T, E> {
 /////////////////////////////////////////////////////////////////////////////
 // The Result Iterators
 /////////////////////////////////////////////////////////////////////////////
-/*
+
 /// An iterator over a reference to the [`Ok`] variant of a [`Result`].
 ///
 /// The iterator yields one value if the result is [`Ok`], otherwise none.
@@ -1085,7 +1085,7 @@ impl<'a, T, E> IntoIterator for &'a mut Result<T, E> {
 /// [`Ok`]: enum.Result.html#variant.Ok
 /// [`Result`]: enum.Result.html
 /// [`Result::iter`]: enum.Result.html#method.iter
-#[derive(Debug)]
+//#[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> { inner: Option<&'a T> }
 
@@ -1130,7 +1130,7 @@ impl<T> Clone for Iter<'_, T> {
 /// [`Ok`]: enum.Result.html#variant.Ok
 /// [`Result`]: enum.Result.html
 /// [`Result::iter_mut`]: enum.Result.html#method.iter_mut
-#[derive(Debug)]
+//#[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> { inner: Option<&'a mut T> }
 
@@ -1173,7 +1173,8 @@ unsafe impl<A> TrustedLen for IterMut<'_, A> {}
 /// [`Result`]: enum.Result.html
 /// [`into_iter`]: ../iter/trait.IntoIterator.html#tymethod.into_iter
 /// [`IntoIterator`]: ../iter/trait.IntoIterator.html
-#[derive(Clone, Debug)]
+#[derive(Clone)]
+//#[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> { inner: Option<T> }
 
@@ -1264,7 +1265,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
             None => Ok(v),
         }
     }
-} */
+} 
 
 #[unstable(feature = "try_trait", issue = "42327")]
 impl<T,E> ops::Try for Result<T, E> {
