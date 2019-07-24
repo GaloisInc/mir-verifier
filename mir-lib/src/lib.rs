@@ -150,8 +150,9 @@ pub mod result;
 
 pub mod slice;
 
-#[stable(feature = "core", since = "1.6.0")]
-pub mod nonzero;
-
+// note: does not need to be public
+mod nonzero;
+mod tuple;
+mod unit;
 
 
