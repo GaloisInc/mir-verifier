@@ -65,7 +65,6 @@ macro_rules! not_impl {
     )*)
 }
 
-//not_impl! { bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
 not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The bitwise AND operator `&`.
@@ -150,7 +149,6 @@ macro_rules! bitand_impl {
     )*)
 }
 
-//bitand_impl! { bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
 bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The bitwise OR operator `|`.
@@ -235,7 +233,6 @@ macro_rules! bitor_impl {
     )*)
 }
 
-//bitor_impl! { bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
 bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The bitwise XOR operator `^`.
@@ -323,7 +320,6 @@ macro_rules! bitxor_impl {
     )*)
 }
 
-//bitxor_impl! { bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
 bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The left shift operator `<<`. Note that because this trait is implemented
@@ -422,18 +418,17 @@ macro_rules! shl_impl_all {
         shl_impl! { $t, u32 }
         shl_impl! { $t, u64 }
         shl_impl! { $t, u128 }
-        //shl_impl! { $t, usize }
+        shl_impl! { $t, usize }
 
         shl_impl! { $t, i8 }
         shl_impl! { $t, i16 }
         shl_impl! { $t, i32 }
         shl_impl! { $t, i64 }
         shl_impl! { $t, i128 }
-        //shl_impl! { $t, isize }
+        shl_impl! { $t, isize }
     )*)
 }
 
-//shl_impl_all! { u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
 shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 
 /// The right shift operator `>>`. Note that because this trait is implemented
@@ -543,7 +538,6 @@ macro_rules! shr_impl_all {
     )*)
 }
 
-//shr_impl_all! { u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
 shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 
 /// The bitwise AND assignment operator `&=`.
@@ -632,8 +626,7 @@ macro_rules! bitand_assign_impl {
     )+)
 }
 
-bitand_assign_impl! { bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
-//bitand_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+bitand_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The bitwise OR assignment operator `|=`.
 ///
@@ -682,8 +675,7 @@ macro_rules! bitor_assign_impl {
     )+)
 }
 
-bitor_assign_impl! { bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
-//bitor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+bitor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The bitwise XOR assignment operator `^=`.
 ///
@@ -732,8 +724,7 @@ macro_rules! bitxor_assign_impl {
     )+)
 }
 
-bitxor_assign_impl! { bool u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
-//bitxor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+bitxor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The left shift assignment operator `<<=`.
 ///
@@ -790,19 +781,18 @@ macro_rules! shl_assign_impl_all {
         shl_assign_impl! { $t, u32 }
         shl_assign_impl! { $t, u64 }
         shl_assign_impl! { $t, u128 }
-        //shl_assign_impl! { $t, usize }
+        shl_assign_impl! { $t, usize }
 
         shl_assign_impl! { $t, i8 }
         shl_assign_impl! { $t, i16 }
         shl_assign_impl! { $t, i32 }
         shl_assign_impl! { $t, i64 }
         shl_assign_impl! { $t, i128 }
-        //shl_assign_impl! { $t, isize }
+        shl_assign_impl! { $t, isize }
     )*)
 }
 
-shl_assign_impl_all! { u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
-//shl_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
+shl_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 
 /// The right shift assignment operator `>>=`.
 ///
@@ -859,16 +849,15 @@ macro_rules! shr_assign_impl_all {
         shr_assign_impl! { $t, u32 }
         shr_assign_impl! { $t, u64 }
         shr_assign_impl! { $t, u128 }
-        //shr_assign_impl! { $t, usize }
+        shr_assign_impl! { $t, usize }
 
         shr_assign_impl! { $t, i8 }
         shr_assign_impl! { $t, i16 }
         shr_assign_impl! { $t, i32 }
         shr_assign_impl! { $t, i64 }
         shr_assign_impl! { $t, i128 }
-        //shr_assign_impl! { $t, isize }
+        shr_assign_impl! { $t, isize }
     )*)
 }
 
-shr_assign_impl_all! { u8 u16 u32 u64 u128 i8 i16 i32 i64 i128 }
-//shr_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
+shr_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }

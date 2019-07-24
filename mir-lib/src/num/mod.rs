@@ -3899,9 +3899,9 @@ impl u8 {
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
-    #[cfg(index)]    
     pub fn eq_ignore_ascii_case(&self, other: &u8) -> bool {
-        self.to_ascii_lowercase() == other.to_ascii_lowercase()
+        unsafe { intrinsics::abort() }
+//        self.to_ascii_lowercase() == other.to_ascii_lowercase()
     }
 
     /// Converts this value to its ASCII upper case equivalent in-place.
@@ -3925,9 +3925,9 @@ impl u8 {
     /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
-    #[cfg(index)]    
     pub fn make_ascii_uppercase(&mut self) {
-        *self = self.to_ascii_uppercase();
+        unsafe { intrinsics::abort() }
+//        *self = self.to_ascii_uppercase();
     }
 
     /// Converts this value to its ASCII lower case equivalent in-place.
@@ -3951,9 +3951,9 @@ impl u8 {
     /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
-    #[cfg(index)]    
     pub fn make_ascii_lowercase(&mut self) {
-        *self = self.to_ascii_lowercase();
+        //        *self = self.to_ascii_lowercase();
+        unsafe { intrinsics::abort() }
     }
 
     /// Checks if the value is an ASCII alphabetic character:
