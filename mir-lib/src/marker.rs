@@ -1,3 +1,13 @@
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 //! Primitive traits and types representing basic properties of types.
 //!
 //! Rust types can be classified in various useful ways according to
@@ -14,8 +24,6 @@ use hash::Hash;
 #[cfg(hash)]
 use hash::Hasher;
 
-use default::Default;
-    
 /// Types that can be transferred across thread boundaries.
 ///
 /// This trait is automatically implemented when the compiler determines it's
@@ -83,14 +91,14 @@ impl<T: ?Sized> !Send for *mut T { }
 ///                         // be made into an object
 /// ```
 ///
-/// [trait object]: ../../book/ch17-02-trait-objects.html
+/// [trait object]: ../../book/first-edition/trait-objects.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sized"]
 #[rustc_on_unimplemented(
     on(parent_trait="std::path::Path", label="borrow the `Path` instead"),
     message="the size for values of type `{Self}` cannot be known at compilation time",
     label="doesn't have a size known at compile-time",
-    note="to learn more, visit <https://doc.rust-lang.org/book/\
+    note="to learn more, visit <https://doc.rust-lang.org/book/second-edition/\
           ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>",
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
@@ -269,10 +277,10 @@ pub trait Unsize<T: ?Sized> {
 /// In addition to the [implementors listed below][impls],
 /// the following types also implement `Copy`:
 ///
-/// * Function item types (i.e., the distinct types defined for each function)
-/// * Function pointer types (e.g., `fn() -> i32`)
-/// * Array types, for all sizes, if the item type also implements `Copy` (e.g., `[i32; 123456]`)
-/// * Tuple types, if each component also implements `Copy` (e.g., `()`, `(i32, bool)`)
+/// * Function item types (i.e. the distinct types defined for each function)
+/// * Function pointer types (e.g. `fn() -> i32`)
+/// * Array types, for all sizes, if the item type also implements `Copy` (e.g. `[i32; 123456]`)
+/// * Tuple types, if each component also implements `Copy` (e.g. `()`, `(i32, bool)`)
 /// * Closure types, if they capture no value from the environment
 ///   or if all such captured values implement `Copy` themselves.
 ///   Note that variables captured by shared reference always implement `Copy`
@@ -388,9 +396,6 @@ impl<T: ?Sized> !Sync for *mut T { }
 
 macro_rules! impls{
     ($t: ident) => (
-        use clone::Clone;
-        use option::Option;
-        
         #[cfg(hash)]
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<T:?Sized> Hash for $t<T> {
@@ -527,7 +532,7 @@ macro_rules! impls{
 /// types. We track the Rust type using a phantom type parameter on
 /// the struct `ExternalResource` which wraps a handle.
 ///
-/// [FFI]: ../../book/ch19-01-unsafe-rust.html#using-extern-functions-to-call-external-code
+/// [FFI]: ../../book/first-edition/ffi.html
 ///
 /// ```
 /// # #![allow(dead_code)]
@@ -577,15 +582,12 @@ macro_rules! impls{
 ///
 /// [drop check]: ../../nomicon/dropck.html
 #[lang = "phantom_data"]
-#[structural_match]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PhantomData<T:?Sized>;
 
 impls! { PhantomData }
 
 mod impls {
-//    use marker::{Send,Sized,Sync};
-    
     #[stable(feature = "rust1", since = "1.0.0")]
     unsafe impl<T: Sync + ?Sized> Send for &T {}
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -597,7 +599,7 @@ mod impls {
 /// This affects, for example, whether a `static` of that type is
 /// placed in read-only static memory or writable static memory.
 #[lang = "freeze"]
-pub(crate) unsafe auto trait Freeze {}
+unsafe auto trait Freeze {}
 
 #[cfg(cell)]
 impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
@@ -609,63 +611,54 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 
 /// Types which can be safely moved after being pinned.
 ///
-/// Since Rust itself has no notion of immovable types, and considers moves
-/// (e.g. through assignment or [`mem::replace`]) to always be safe,
+/// Since Rust itself has no notion of immovable types, and will consider moves to always be safe,
 /// this trait cannot prevent types from moving by itself.
 ///
-/// Instead it is used to prevent moves through the type system,
-/// by controlling the behavior of pointers `P` wrapped in the [`Pin<P>`] wrapper,
+/// Instead it can be used to prevent moves through the type system,
+/// by controlling the behavior of pointers wrapped in the [`Pin`] wrapper,
 /// which "pin" the type in place by not allowing it to be moved out of them.
 /// See the [`pin module`] documentation for more information on pinning.
 ///
 /// Implementing this trait lifts the restrictions of pinning off a type,
-/// which then allows it to move out with functions such as [`mem::replace`].
-///
-/// `Unpin` has no consequence at all for non-pinned data. In particular,
-/// [`mem::replace`] happily moves `!Unpin` data (it works for any `&mut T`, not
-/// just when `T: Unpin`). However, you cannot use
-/// [`mem::replace`] on data wrapped inside a [`Pin<P>`] because you cannot get the
-/// `&mut T` you need for that, and *that* is what makes this system work.
+/// which then allows it to move out with functions such as [`replace`].
 ///
 /// So this, for example, can only be done on types implementing `Unpin`:
 ///
 /// ```rust
-/// use std::mem;
+/// #![feature(pin)]
+/// use std::mem::replace;
 /// use std::pin::Pin;
 ///
 /// let mut string = "this".to_string();
 /// let mut pinned_string = Pin::new(&mut string);
 ///
-/// // We need a mutable reference to call `mem::replace`.
-/// // We can obtain such a reference by (implicitly) invoking `Pin::deref_mut`,
-/// // but that is only possible because `String` implements `Unpin`.
-/// mem::replace(&mut *pinned_string, "other".to_string());
+/// // dereferencing the pointer mutably is only possible because String implements Unpin
+/// replace(&mut *pinned_string, "other".to_string());
 /// ```
 ///
 /// This trait is automatically implemented for almost every type.
 ///
-/// [`mem::replace`]: ../../std/mem/fn.replace.html
-/// [`Pin<P>`]: ../pin/struct.Pin.html
+/// [`replace`]: ../../std/mem/fn.replace.html
+/// [`Pin`]: ../pin/struct.Pin.html
 /// [`pin module`]: ../../std/pin/index.html
-#[stable(feature = "pin", since = "1.33.0")]
-//#[lang = "unpin"]
+#[unstable(feature = "pin", issue = "49150")]
 pub auto trait Unpin {}
 
-/// A marker type which does not implement `Unpin`.
+/// A type which does not implement `Unpin`.
 ///
-/// If a type contains a `PhantomPinned`, it will not implement `Unpin` by default.
-#[stable(feature = "pin", since = "1.33.0")]
-//#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+/// If a type contains a `Pinned`, it will not implement `Unpin` by default.
+#[unstable(feature = "pin", issue = "49150")]
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct PhantomPinned;
+//#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd,Hash)]
+pub struct Pinned;
 
-#[stable(feature = "pin", since = "1.33.0")]
-impl !Unpin for PhantomPinned {}
+#[unstable(feature = "pin", issue = "49150")]
+impl !Unpin for Pinned {}
 
-#[stable(feature = "pin", since = "1.33.0")]
+#[unstable(feature = "pin", issue = "49150")]
 impl<'a, T: ?Sized + 'a> Unpin for &'a T {}
 
-#[stable(feature = "pin", since = "1.33.0")]
+#[unstable(feature = "pin", issue = "49150")]
 impl<'a, T: ?Sized + 'a> Unpin for &'a mut T {}
 
 /// Implementations of `Copy` for primitive types.
@@ -675,8 +668,7 @@ impl<'a, T: ?Sized + 'a> Unpin for &'a mut T {}
 mod copy_impls {
 
     use super::Copy;
-    use marker::Sized;
-    
+
     macro_rules! impl_copy {
         ($($t:ty)*) => {
             $(

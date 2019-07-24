@@ -137,10 +137,11 @@
 
 #[cfg(iter)]
 use iter::{FromIterator, FusedIterator, TrustedLen};
-#[cfg(mem)]
-use {hint, mem};
+use mem;
+#[cfg(hint)]
+use hint;
 use ops::{self, Deref};
-//use pin::Pin;
+use pin::Pin;
 
 //SCW
 use intrinsics;
@@ -297,7 +298,7 @@ impl<T> Option<T> {
     #[stable(feature = "pin", since = "1.33.0")]
     pub fn as_pin_mut<'a>(self: Pin<&'a mut Option<T>>) -> Option<Pin<&'a mut T>> {
         unsafe {
-            Pin::get_unchecked_mut(self).as_mut().map(|x| Pin::new_unchecked(x))
+            Pin::get_mut_unchecked(self).as_mut().map(|x| Pin::new_unchecked(x))
         }
     }
 
@@ -864,7 +865,6 @@ impl<T> Option<T> {
     /// assert_eq!(x, None);
     /// assert_eq!(y, None);
     /// ```
-    #[cfg(mem)]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn take(&mut self) -> Option<T> {
@@ -890,7 +890,6 @@ impl<T> Option<T> {
     /// assert_eq!(x, Some(3));
     /// assert_eq!(old, None);
     /// ```
-    #[cfg(mem)]    
     #[inline]
     #[stable(feature = "option_replace", since = "1.31.0")]
     pub fn replace(&mut self, value: T) -> Option<T> {

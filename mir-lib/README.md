@@ -5,6 +5,21 @@ This file is derived from the modules in
 https://github.com/rust-lang/rust/tree/master/src/libcore, in
 accordance with the MIT LICENCE.
 
+This version of mir-lib is self-contained. It does not import anything
+from `core`, only from other mir-lib modules. This is enabled with the
+#[no_core] attribute at the top of src/lib.rs
+
+To be compatible with mir-lib, the libraries are derived from the
+source code in rust version 1.31.0.
+
+(If mir-lib is updated, then the libraries will also need to be
+updated to the latest version. As there are still many manual edits to
+these libraries that will be an onerous process. We need a more
+automatic mechanism.)
+
+
+
+
 ==================================================================
 
 How to add new pieces of libcore to mir-lib:

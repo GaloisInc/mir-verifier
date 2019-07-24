@@ -414,6 +414,6 @@ instance Pretty Collection where
           [text "TRAITs"] ++
           map pretty (Map.elems (col^.traits)) ++
           [text "IMPLs"] ++
-          map pretty (col^.impls) ++
+          map pretty (Map.elems (col^.impls)) ++
           [text "STATICS"] ++
           map pretty (Map.elems (col^.statics)))

@@ -374,8 +374,7 @@ findItem methName traitSub trait = do
   col <- use (cs.collection)
   let isImpl :: TraitImpl -> Maybe (TraitImpl, Map Integer Ty)
       isImpl ti
-       | (TraitRef tn ss) <- ti^.tiTraitRef
-       , tn == trait^.traitName
+       | (TraitRef _tn ss) <- ti^.tiTraitRef
        = (if db > 6 then trace $ "Comparing " ++ fmt traitSub ++ " with " ++ fmt ss else id) $
          case matchSubsts traitSub ss of
                 Right m  -> 
@@ -390,12 +389,12 @@ findItem methName traitSub trait = do
          | otherwise =
                   (if db > 6 then trace ("no match") else id)
            Nothing
-       
-  case firstJust isImpl (col^.impls) of
+  case (col^.impls) Map.!? (trait^.traitName) of
+    Just is -> case firstJust isImpl is of
+      Nothing -> return Nothing
+      Just (ti, unifier) -> do
+        return $ (ti,unifier,) <$> List.find (\x -> x^.tiiImplements == methName) (ti^.tiItems)
     Nothing -> return Nothing
-    Just (ti, unifier) -> do
-      return $ (ti,unifier,) <$> List.find (\x -> x^.tiiImplements == methName) (ti^.tiItems)
-
 -------------------------------------------------------------------------------------------------------
 --
 -- | Determine whether a function call can be resolved via dictionary projection

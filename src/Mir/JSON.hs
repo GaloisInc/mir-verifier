@@ -168,10 +168,10 @@ instance FromJSON Collection where
         (foldr (\ x m -> Map.insertWithKey f (x^.fname) x m)     Map.empty fns)
         (foldr (\ x m -> Map.insertWithKey f (x^.adtname) x m)   Map.empty adts)
         (foldr (\ x m -> Map.insertWithKey f (x^.traitName) x m) Map.empty traits)
-        impls
+        (foldr (\ x m -> Map.insertWith (++) (x^.tiTraitRef.trDefId) [x] m) Map.empty impls)
         (foldr (\ x m -> Map.insertWithKey f (x^.sName) x m)     Map.empty statics)
         emptyATDict
-        Map.empty
+
 
 
 instance FromJSON Fn where

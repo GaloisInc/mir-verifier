@@ -1,4 +1,6 @@
 #![crate_type = "lib"]
+
+#![stable(feature = "core", since = "1.6.0")]
 #![no_core]
 
 #![feature(allow_internal_unstable)]
@@ -44,50 +46,41 @@
 #![feature(mips_target_feature)]
 #![feature(aarch64_target_feature)]
 #![feature(wasm_target_feature)]
-#![feature(avx512_target_feature)]
-//#![feature(cmpxchg16b_target_feature)]
 //#![feature(const_slice_len)]
 //#![feature(const_str_as_bytes)]
 //#![feature(const_str_len)]
+#![feature(const_let)]
+//#![feature(const_int_rotate)]
+//#![feature(const_int_wrapping)]
+//#![feature(const_int_sign)]
 #![feature(const_int_conversion)]
 #![feature(const_transmute)]
 #![feature(reverse_bits)]
 #![feature(non_exhaustive)]
 
+#![feature(const_panic)]
 
-#![feature(const_let)]
-//#![feature(const_int_rotate)]
-//#![feature(const_int_wrapping)]
-//#![feature(const_int_sign)]
-
-//#![feature(is_sorted)]
-//#![feature(iter_once_with)]
 #![feature(bind_by_move_pattern_guards)]
-//#![feature(std_internals)]
 #![feature(structural_match)]
 #![feature(abi_unadjusted)]
-//#![feature(adx_target_feature)]
-//#![feature(maybe_uninit, maybe_uninit_slice, maybe_uninit_array)]
 #![feature(external_doc)]
-
 #![feature(core_intrinsics)]
-//#![feature(exact_size_is_empty)]
-//#![feature(trusted_len)]
 #![feature(try_trait)]
-#![feature(pin)]
+//#![feature(pin)]
 #![feature(coerce_unsized)]
 #![feature(unsize)]
-#![feature(no_panic_pow)]
+//#![feature(no_panic_pow)]
 #![feature(wrapping_next_power_of_two)]
-//#![feature(const_int_ops)]
-//#![feature(allow_internal_unstable)]
 #![feature(allow_internal_unsafe)]
-#![feature(min_const_fn)]
+//#![feature(min_const_fn)]
+#![feature(const_int_ops)]
+#![feature(const_int_sign)]
 
-#![stable(feature = "rust1", since = "1.0.0")]
+#![allow(unused)]
+#![allow(dead_code)]
+#![allow(unused_attributes)]
 
 #[prelude_import]
-#[allow(unused)]
 use prelude::v1::*;
 
 #[macro_use] mod macros;
@@ -128,9 +121,9 @@ pub mod prelude;
 /* Core modules for ownership management */
 
 pub mod intrinsics;
-//pub mod mem;
-//pub mod ptr;
-//pub mod hint;
+pub mod mem;
+pub mod ptr;
+pub mod hint;
 
 
 /* Core language traits */
@@ -146,15 +139,19 @@ pub mod convert;
 
 /* Core types and methods on primitives */
 
+
 pub mod panic;
 pub mod panicking;
+pub mod pin;
+//pub mod iter;
 pub mod option;
 pub mod result;
-pub mod pin;
 
 
 //pub mod slice;
 
+#[stable(feature = "core", since = "1.6.0")]
+pub mod nonzero;
 
 
 

@@ -42,13 +42,11 @@ traceCollection_AT col = seq col .
      trace ("Functions with ATs: \n" ++ fmt functionsWithATs) .
      trace ("Impls with ATs: \n" ++ fmt implsWithATs)         .
      trace ("Traits with ATs: \n" ++ fmt traitsWithATs)       .
-     trace ("Old traits with ATs: \n" ++ fmt oldTraitsWithATs).
      trace ("^--------------------------------------^")     
   where         
        functionsWithATs = filter (not . null . (^. fsig . fsassoc_tys)) (Map.elems (col ^. functions))
-       implsWithATs     = filter (not . null . (^. tiAssocTys)) (col ^. impls)       
+       implsWithATs     = filter (not . null . (^. tiAssocTys)) (concat (Map.elems (col ^. impls)))
        traitsWithATs    = filter (not . null . (^. traitAssocTys)) (Map.elems (col ^. traits))
-       oldTraitsWithATs = Map.elems (col ^. traitATs)
 
 
 
@@ -117,7 +115,7 @@ passAssociatedTypes col =
        col3  =
          col2 & functions %~ fmap (addFnAssocTys info1)
               & traits    %~ fmap (\tr -> tr & traitItems %~ fmap (addTraitFnAssocTys info1 tr))
-              & impls     %~ addImplAssocTys info1
+              & impls     %~ fmap (addImplAssocTys info1)
            where info1 =  ATInfo 0 0 (?mirLib <> col2)
                             (error "Should ONLY need collection here")
                           
@@ -129,7 +127,7 @@ passAssociatedTypes col =
        -- 5. translate everything
        col4  = col3 & traits    %~ Map.map (translateTrait info) 
                     & functions %~ Map.map (translateFn    info)
-                    & impls     %~ map     (translateImpl  info)
+                    & impls     %~ Map.map (map (translateImpl  info))
           where info  = ATInfo 0 0 full3 mc
       
    in
@@ -294,7 +292,7 @@ foldMaybe f (x:xs) b =
 --    1. we look up the TraitRef from an impl using the tiPreTraitRef
 --    2. 
 implATDict :: (?mirLib :: Collection, HasCallStack, ?debug::Int) => Collection -> ATDict
-implATDict col = go (col^.impls) mempty where
+implATDict col = go (concat (Map.elems (col^.impls))) mempty where
   full = ?mirLib <> col
 
   -- Try to process a TraitImpl, returning whether the processing was successful

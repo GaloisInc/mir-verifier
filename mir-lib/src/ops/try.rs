@@ -1,14 +1,17 @@
-// SCW: from https://github.com/rust-lang/rust/blob/master/src/libcore/ops/try.rs
-// 4/15/19
-
-#[unstable(feature = "try_trait", issue = "42327")]
-
-use result::Result;
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 
 /// A trait for customizing the behavior of the `?` operator.
 ///
 /// A type implementing `Try` is one that has a canonical way to view it
-/// in terms of a success/failure dichotomy. This trait allows both
+/// in terms of a success/failure dichotomy.  This trait allows both
 /// extracting those success or failure values from an existing instance and
 /// creating a new instance from a success or failure value.
 #[unstable(feature = "try_trait", issue = "42327")]

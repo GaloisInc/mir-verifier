@@ -100,7 +100,7 @@ struct FatPtr<T> {
 // Extension traits
 //
 
-#[cfg(dup_lang)]
+
 #[lang = "slice"]
 #[cfg(not(test))]
 impl<T> [T] {
@@ -464,6 +464,7 @@ impl<T> [T] {
     /// v.swap(1, 3);
     /// assert!(v == ["a", "d", "c", "b"]);
     /// ```
+    #[cfg(mem)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn swap(&mut self, a: usize, b: usize) {
@@ -1196,6 +1197,7 @@ impl<T> [T] {
     ///     println!("{:?}", group);
     /// }
     /// ```
+    #[cfg(SplitN)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn splitn<F>(&self, n: usize, pred: F) -> SplitN<T, F>
@@ -1226,6 +1228,7 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, [1, 40, 30, 1, 60, 50]);
     /// ```
+    #[cfg(SplitN)]    
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn splitn_mut<F>(&mut self, n: usize, pred: F) -> SplitNMut<T, F>
@@ -1772,7 +1775,7 @@ impl<T> [T] {
     ///         v == [2, 1, -3, -5, 4]);
     /// ```
     #[unstable(feature = "slice_partition_at_index", issue = "55300")]
-#[cfg(sort)]        
+    #[cfg(sort)]        
     #[inline]
     pub fn partition_at_index_by_key<K, F>(&mut self, index: usize, mut f: F)
                                            -> (&mut [T], &mut T, &mut [T])
@@ -1835,6 +1838,7 @@ impl<T> [T] {
     /// assert_eq!(dedup, ["foo", "BAZ", "Bar", "baz"]);
     /// assert_eq!(duplicates, ["bar", "Foo", "BAZ"]);
     /// ```
+    #[cfg(mem)]
     #[unstable(feature = "slice_partition_dedup", issue = "54279")]
     #[inline]
     pub fn partition_dedup_by<F>(&mut self, mut same_bucket: F) -> (&mut [T], &mut [T])
@@ -2162,6 +2166,7 @@ impl<T> [T] {
     ///
     /// [`clone_from_slice`]: #method.clone_from_slice
     /// [`split_at_mut`]: #method.split_at_mut
+    #[cfg(mem)]
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     pub fn copy_from_slice(&mut self, src: &[T]) where T: Copy {
         assert_eq!(self.len(), src.len(),
@@ -2197,6 +2202,7 @@ impl<T> [T] {
     ///
     /// assert_eq!(&bytes, b"Hello, Wello!");
     /// ```
+    #[cfg(mem)]
     #[unstable(feature = "copy_within", issue = "54236")]
     pub fn copy_within<R: ops::RangeBounds<usize>>(&mut self, src: R, dest: usize)
     where
@@ -2276,6 +2282,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [`split_at_mut`]: #method.split_at_mut
+    #[cfg(mem)]
     #[stable(feature = "swap_with_slice", since = "1.27.0")]
     pub fn swap_with_slice(&mut self, other: &mut [T]) {
         assert!(self.len() == other.len(),
@@ -2531,7 +2538,7 @@ impl<T> [T] {
     }
 }
 
-#[cfg(dup_lang)]
+
 #[lang = "slice_u8"]
 #[cfg(not(test))]
 impl [u8] {
@@ -2591,7 +2598,7 @@ impl [u8] {
 
 }
 
-#[cfg(orphan)]
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, I> ops::Index<I> for [T]
     where I: SliceIndex<[T]>
@@ -2604,7 +2611,7 @@ impl<T, I> ops::Index<I> for [T]
     }
 }
 
-#[cfg(orphan)]
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, I> ops::IndexMut<I> for [T]
     where I: SliceIndex<[T]>
@@ -2953,7 +2960,6 @@ impl<T> SliceIndex<[T]> for ops::RangeFull {
 
 //Need an trait impl for
 //::ops::range::{{impl}}[12]::end<usize>
-#[cfg(range_usize)]
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
     type Output = [T];
@@ -2993,7 +2999,6 @@ impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
     }
 }
 
-#[cfg(range_usize)]
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
     type Output = [T];
@@ -3033,14 +3038,14 @@ impl<T> SliceIndex<[T]> for ops::RangeToInclusive<usize> {
 // Common traits
 ////////////////////////////////////////////////////////////////////////////////
 
-#[cfg(orphan)]
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for &[T] {
     /// Creates an empty slice.
     fn default() -> Self { &[] }
 }
 
-#[cfg(orphan)]
+
 #[stable(feature = "mut_slice_default", since = "1.5.0")]
 impl<T> Default for &mut [T] {
     /// Creates a mutable empty slice.

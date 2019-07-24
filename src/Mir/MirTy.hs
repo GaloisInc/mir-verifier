@@ -126,7 +126,7 @@ getTraitImplementation col name = do
 
     -- find all traitImplItems with the same name 
     let implItems = [ (addAssocTypes (ti^.tiItems) (ti^.tiTraitRef),tii) |
-                      ti <- timpls,
+                      ti <- concat (Map.elems timpls),
                       tii <- ti^.tiItems,
                       tii^.tiiName == name ]
 

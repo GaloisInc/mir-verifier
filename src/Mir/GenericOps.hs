@@ -115,10 +115,10 @@ unionATDict d1 d2 = ATDict
 --------------------------------------------------------------------------------------
 
 instance Semigroup Collection where
-  (Collection f1 a1 t1 i1 s1 d1 m1 ) <> (Collection f2 a2 t2 i2 s2 d2 m2 ) =
-    Collection (f1 <> f2) (a1 <> a2) (t1 <> t2) (i1 <> i2) (s1 <> s2) (d1 <> d2) (m1 <> m2) 
+  (Collection f1 a1 t1 i1 s1 d1 ) <> (Collection f2 a2 t2 i2 s2 d2 ) =
+    Collection (f1 <> f2) (a1 <> a2) (t1 <> t2) (Map.unionWith (++) i1 i2) (s1 <> s2) (d1 <> d2) 
 instance Monoid Collection where
-  mempty  = Collection mempty mempty mempty mempty mempty mempty mempty 
+  mempty  = Collection mempty mempty mempty mempty mempty mempty  
   mappend = (<>)
 
 
@@ -308,9 +308,7 @@ mkSubsts m = Substs (map g [0 ..]) where
 
 
 getImpls :: Collection -> TraitName -> [TraitImpl]
-getImpls col tn =
-  [ i | i <- col^.impls, let (TraitRef tn2 _ss) = (i^.tiTraitRef), tn == tn2]
-
+getImpls col tn = Map.findWithDefault [] tn (col^.impls)
 
 -- | Special case for Ty
 abstractATs_Ty :: (HasCallStack, MonadError String m) => ATInfo -> Ty -> m Ty

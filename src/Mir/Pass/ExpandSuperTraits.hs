@@ -15,7 +15,7 @@
 -- (i.e. in the traits part of the collection)
 --    In other words, this pass must be preceeded by passRemoveUnknownPreds
 --    if not, the trait will be eliminated from the collection
--- 
+--  
 -----------------------------------------------------------------------
 module Mir.Pass.ExpandSuperTraits where
 
@@ -44,19 +44,30 @@ passExpandSuperTraits col = col & traits   %~ inheritSuperItems
                                 & impls    %~ inheritSuperImpls (?mirLib <> col)
 
 
+toRefMap :: Map TraitName [TraitImpl] -> Map TraitRef TraitImpl
+toRefMap tis = foldr g Map.empty (Map.elems tis) where
+     g :: [TraitImpl] ->  Map TraitRef TraitImpl -> Map TraitRef TraitImpl
+     g tis m = foldr (\ti m -> Map.insert (ti^.tiPreTraitRef) ti m) m tis
+
+fromRefMap :: Map TraitRef TraitImpl -> Map TraitName [TraitImpl]
+fromRefMap m = foldr g Map.empty m where
+  g :: TraitImpl -> Map TraitName [TraitImpl] -> Map TraitName [TraitImpl]
+  g ti m = Map.insertWith (++) (ti^.tiTraitRef.trDefId) [ti] m
+
+
 inMirLib :: (?debug::Int, ?mirLib::Collection, HasCallStack) => TraitRef -> Bool
 inMirLib tr@(TraitRef did ss) =
-  Map.member did (?mirLib ^. traits) &&
-  any (\ti -> (ti^.tiPreTraitRef) == tr) (?mirLib ^. impls)
+  case  (?mirLib ^. impls) Map.!? did of
+    Just is -> any (\ti -> (ti^.tiPreTraitRef) == tr) is
+    Nothing -> False
 
-inheritSuperImpls :: (?debug::Int, ?mirLib::Collection, HasCallStack) => Collection -> [TraitImpl] -> [TraitImpl]
-inheritSuperImpls col tis = Map.elems (go tis Map.empty) where
+inheritSuperImpls :: (?debug::Int, ?mirLib::Collection, HasCallStack) => Collection ->
+   Map TraitName [TraitImpl] -> Map TraitName [TraitImpl]
+inheritSuperImpls col tis = fromRefMap (go (concat (Map.elems tis)) Map.empty) where
 
   -- For a given trait reference, calculate all of its items 
   init :: Map TraitRef TraitImpl
-  init = Map.fromList (fmap g (?mirLib ^. impls)) where
-     g :: TraitImpl -> (TraitRef, TraitImpl)
-     g ti = (ti^.tiPreTraitRef, ti)
+  init = toRefMap (?mirLib ^.impls)
   
   go :: HasCallStack => [TraitImpl] -> Map TraitRef TraitImpl -> Map TraitRef TraitImpl
   go trs done = if null this then done else go next step where

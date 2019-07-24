@@ -67,7 +67,7 @@ findMethodItem mn (_:rest) = findMethodItem mn rest
 findMethodItem mn [] = Nothing -- error $ "BUG: cannot find method " ++ fmt mn
 
 implMethods' :: (HasCallStack, ?mirLib::Collection) => Collection -> Map MethName [Predicate]
-implMethods' col = foldMap g (col^.impls) where
+implMethods' col = foldMap g (concat (Map.elems (col^.impls))) where
   full = ?mirLib <> col
   
   g :: TraitImpl -> Map MethName [Predicate]

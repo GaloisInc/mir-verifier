@@ -170,10 +170,9 @@ data Collection = Collection {
       _functions :: !(Map MethName Fn)
     , _adts      :: !(Map AdtName Adt)
     , _traits    :: !(Map TraitName Trait)
-    , _impls     :: !([TraitImpl])
+    , _impls     :: !(Map TraitName [TraitImpl])
     , _statics   :: !(Map DefId Static)
     , _adict     :: !ATDict
-    , _traitATs  :: !(Map TraitName Trait)
 } deriving (Show, Generic)
 
 data Predicate =
@@ -448,7 +447,9 @@ data TraitItem
     deriving (Eq, Ord, Show, Generic)
 
 data TraitRef
-    = TraitRef DefId Substs 
+    = TraitRef { _trDefId  :: DefId
+               , _trSubsts :: Substs
+               }
       -- Indicates the trait this impl implements.
     deriving (Show, Eq, Ord, Generic)
 
@@ -478,8 +479,6 @@ data TraitImplItem
                       }
       | TraitImplType { _tiiName       :: DefId
                       , _tiiImplements :: DefId
---                      , _tiiGenerics   :: [Param]
---                      , _tiiPredicates :: [Predicate]
                       , _tiiType       :: Ty
                       }
       deriving (Show, Eq, Ord, Generic)
@@ -525,7 +524,7 @@ instance Show ATDict where
   show d = show $ ppATDict d
 
 instance Eq Collection where
-  (Collection f1 a1 t1 i1 s1 _ _ ) == (Collection f2 a2 t2 i2 s2 _ _ ) = 
+  (Collection f1 a1 t1 i1 s1 _ ) == (Collection f2 a2 t2 i2 s2 _ ) = 
     f1 == f2 && a1 == a2 && t1 == t2 && i1 == i2 &&  s1 == s2
 
 --------------------------------------------------------------------------------------
@@ -546,6 +545,7 @@ makeLenses ''AdtAg
 makeLenses ''Trait
 makeLenses ''Static
 
+makeLenses ''TraitRef
 makeLenses ''TraitImpl
 makeLenses ''TraitImplItem
 
