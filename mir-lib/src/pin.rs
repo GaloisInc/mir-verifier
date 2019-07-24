@@ -114,8 +114,8 @@ pub use marker::Unpin;
 // cannot move the value behind `pointer`.
 #[unstable(feature = "pin", issue = "49150")]
 #[fundamental]
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 //#[derive(Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Pin<P> {
     pointer: P,
 }
@@ -131,7 +131,8 @@ where
     pub fn new(pointer: P) -> Pin<P> {
         // Safety: the value pointed to is `Unpin`, and so has no requirements
         // around pinning.
-        unsafe { Pin::new_unchecked(pointer) }
+        unsafe { intrinsics::abort() }  
+//        unsafe { Pin::new_unchecked(pointer) }
     }
 }
 
@@ -158,8 +159,8 @@ impl<P: Deref> Pin<P> {
     #[unstable(feature = "pin", issue = "49150")]
     #[inline(always)]
     pub fn as_ref(self: &Pin<P>) -> Pin<&P::Target> {
-        unsafe { intrinsics::abort() }        
-//        unsafe { Pin::new_unchecked(&*self.pointer) }
+        unsafe { intrinsics::abort() }          
+        // unsafe { Pin::new_unchecked(&*self.pointer) }
     }
 }
 
@@ -168,7 +169,7 @@ impl<P: DerefMut> Pin<P> {
     #[unstable(feature = "pin", issue = "49150")]
     #[inline(always)]
     pub fn as_mut(self: &mut Pin<P>) -> Pin<&mut P::Target> {
-        unsafe { intrinsics::abort() }        
+        unsafe { intrinsics::abort() }  
 //        unsafe { Pin::new_unchecked(&mut *self.pointer) }
     }
 
@@ -179,8 +180,8 @@ impl<P: DerefMut> Pin<P> {
     where
         P::Target: Sized,
     {
-        //        *self.pointer = value;
-        unsafe { intrinsics::abort() }        
+        unsafe { intrinsics::abort() }          
+        //*self.pointer = value;
     }
 }
 
@@ -299,7 +300,7 @@ where
     }
 }
 
-#[cfg(pin)]
+#[cfg(fmt)]
 #[unstable(feature = "pin", issue = "49150")]
 impl<P: fmt::Debug> fmt::Debug for Pin<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -307,7 +308,7 @@ impl<P: fmt::Debug> fmt::Debug for Pin<P> {
     }
 }
 
-#[cfg(pin)]
+#[cfg(fmt)]
 #[unstable(feature = "pin", issue = "49150")]
 impl<P: fmt::Display> fmt::Display for Pin<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -315,7 +316,7 @@ impl<P: fmt::Display> fmt::Display for Pin<P> {
     }
 }
 
-#[cfg(pin)]
+#[cfg(fmt)]
 #[unstable(feature = "pin", issue = "49150")]
 impl<P: fmt::Pointer> fmt::Pointer for Pin<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

@@ -1,3 +1,13 @@
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 //! Traits for conversions between types.
 //!
 //! The traits in this module provide a general way to talk about conversions
@@ -38,24 +48,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use marker::Sized;
-use result::Result;
-use result::Result::*;
-
-/// SCW:Need to add this
-#[lang = "eh_personality"] extern fn eh_personality() {}
-
-/*
-use core::panic::PanicInfo;
-
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
-}*/
-
-
-
-
 /// An identity function.
 ///
 /// Two things are important to note about this function:
@@ -73,6 +65,7 @@ fn panic(_info: &PanicInfo) -> ! {
 /// Using `identity` to do nothing among other interesting functions:
 ///
 /// ```rust
+/// #![feature(convert_id)]
 /// use std::convert::identity;
 ///
 /// fn manipulation(x: u32) -> u32 {
@@ -86,6 +79,7 @@ fn panic(_info: &PanicInfo) -> ! {
 /// Using `identity` to get a function that changes nothing in a conditional:
 ///
 /// ```rust
+/// #![feature(convert_id)]
 /// use std::convert::identity;
 ///
 /// # let condition = true;
@@ -102,13 +96,15 @@ fn panic(_info: &PanicInfo) -> ! {
 /// Using `identity` to keep the `Some` variants of an iterator of `Option<T>`:
 ///
 /// ```rust
+/// #![feature(convert_id)]
 /// use std::convert::identity;
 ///
 /// let iter = vec![Some(1), None, Some(3)].into_iter();
 /// let filtered = iter.filter_map(identity).collect::<Vec<_>>();
 /// assert_eq!(vec![1, 3], filtered);
 /// ```
-#[stable(feature = "convert_id", since = "1.33.0")]
+#[unstable(feature = "convert_id", issue = "53500")]
+#[rustc_const_unstable(feature = "const_convert_id")]
 #[inline]
 pub const fn identity<T>(x: T) -> T { x }
 
@@ -332,8 +328,7 @@ pub trait Into<T>: Sized {
 /// An example usage for error handling:
 ///
 /// ```
-/// use std::fs;
-/// use std::io;
+/// use std::io::{self, Read};
 /// use std::num;
 ///
 /// enum CliError {
@@ -354,7 +349,9 @@ pub trait Into<T>: Sized {
 /// }
 ///
 /// fn open_and_parse_file(file_name: &str) -> Result<i32, CliError> {
-///     let mut contents = fs::read_to_string(&file_name)?;
+///     let mut file = std::fs::File::open("test")?;
+///     let mut contents = String::new();
+///     file.read_to_string(&mut contents)?;
 ///     let num: i32 = contents.trim().parse()?;
 ///     Ok(num)
 /// }
@@ -409,7 +406,6 @@ pub trait TryFrom<T>: Sized {
 ////////////////////////////////////////////////////////////////////////////////
 
 // As lifts over &
-/*  --- SCW: these are static method invocations */
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized, U: ?Sized> AsRef<U> for &T where T: AsRef<U>
 {
@@ -417,7 +413,6 @@ impl<T: ?Sized, U: ?Sized> AsRef<U> for &T where T: AsRef<U>
         <T as AsRef<U>>::as_ref(*self)
     }
 }
-
 
 // As lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -428,7 +423,6 @@ impl<T: ?Sized, U: ?Sized> AsRef<U> for &mut T where T: AsRef<U>
     }
 }
 
-
 // FIXME (#45742): replace the above impls for &/&mut with the following more general one:
 // // As lifts over Deref
 // impl<D: ?Sized + Deref, U: ?Sized> AsRef<U> for D where D::Target: AsRef<U> {
@@ -438,7 +432,6 @@ impl<T: ?Sized, U: ?Sized> AsRef<U> for &mut T where T: AsRef<U>
 // }
 
 // AsMut lifts over &mut
-/* --- SCW -- urk! is this an example of lack of compositionality */
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized, U: ?Sized> AsMut<U> for &mut T where T: AsMut<U>
 {
@@ -462,14 +455,13 @@ impl<T, U> Into<U> for T where U: From<T>
     fn into(self) -> U {
         U::from(self)
     }
-} 
+}
 
 // From (and thus Into) is reflexive
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> From<T> for T {
     fn from(t: T) -> T { t }
 }
-
 
 
 // TryFrom implies TryInto
@@ -483,19 +475,16 @@ impl<T, U> TryInto<U> for T where U: TryFrom<T>
     }
 }
 
-
 // Infallible conversions are semantically equivalent to fallible conversions
 // with an uninhabited error type.
 #[unstable(feature = "try_from", issue = "33417")]
-impl<T, U> TryFrom<U> for T where U: Into<T> {
+impl<T, U> TryFrom<U> for T where T: From<U> {
     type Error = !;
 
     fn try_from(value: U) -> Result<Self, Self::Error> {
-        Ok(U::into(value))
+        Ok(T::from(value))
     }
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // CONCRETE IMPLS
@@ -522,5 +511,3 @@ impl AsRef<str> for str {
         self
     }
 }
-
-
