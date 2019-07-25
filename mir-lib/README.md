@@ -36,7 +36,7 @@ these added attributes include:
 #[cfg(any)]
 
 The lowest level of pointer manipulation (i.e. ptr.rs) is *not*
-include.  Operations that rely on these functions are edited to refer
+included.  Operations that rely on these functions are edited to refer
 to "intrinsics::abort()" instead. If these operations are needed by
 the simulator, they should be made available via overrides.
 (As well as any of the other intrinsics.)

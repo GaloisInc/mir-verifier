@@ -137,8 +137,9 @@ customOps :: Map ExplodedDefId CustomRHS
 customOps = Map.fromList [
                            fn_call
                          , fn_call_once
+                         , fn_call_mut
 
-                         , slice_len
+{-                         , slice_len
                          , slice_is_empty
                          , slice_first
                          , slice_get
@@ -160,7 +161,7 @@ customOps = Map.fromList [
                          , into_iter
                          , iter_next
                          , iter_map
-                         , iter_collect
+                         , iter_collect -}
 
                          , wrapping_mul
                          , wrapping_sub
@@ -813,6 +814,10 @@ fn_call = ((["ops","function"], "Fn", ["call"]), \subst -> Just $ CustomOp $ fn_
 fn_call_once :: (ExplodedDefId, CustomRHS)
 fn_call_once = ((["ops","function"], "FnOnce", ["call_once"]), \subst -> Just $ CustomOp $ fn_call_op subst)
 
+fn_call_mut :: (ExplodedDefId, CustomRHS)
+fn_call_mut = ((["ops","function"], "FnMut", ["call_mut"]), \subst -> Just $ CustomOp $ fn_call_op subst)
+
+
 fn_call_op ::  forall h s ret. HasCallStack => Substs -> [Ty] -> [MirExp s] -> MirGenerator h s ret (MirExp s)
 fn_call_op (Substs [ty1, aty]) [argTy1,argTy2] [fn,argtuple] = do
      ps <- use $ currentFn.fsig.fspredicates
@@ -832,7 +837,7 @@ fn_call_op (Substs [ty1, aty]) [argTy1,argTy2] [fn,argtuple] = do
      -- paired with it unpacked as a closure
      let unpackClosure :: Ty -> MirExp s -> MirGenerator h s ret (MirExp s, MirExp s)
 
-         unpackClosure (TyRef ty Immut)  arg =
+         unpackClosure (TyRef ty _mut)  arg =
              unpackClosure ty arg
 
          unpackClosure (TyClosure defid clargs) arg = do

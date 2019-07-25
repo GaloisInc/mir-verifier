@@ -37,8 +37,9 @@ module Mir.Trans(transCollection,transStatics,RustModule(..)
 import Control.Monad
 import Control.Monad.ST
 import System.IO
+import System.IO.Unsafe
 import Control.Monad.IO.Class
-
+import Control.Exception
 
 import Control.Lens hiding (op,(|>))
 import Data.Foldable
@@ -85,6 +86,7 @@ import Data.Parameterized.NatRepr
 import Data.Parameterized.Some
 import Data.Parameterized.Peano
 import Data.Parameterized.BoolRepr
+import Data.Parameterized.TraversableFC
 
 import Mir.Mir
 import Mir.MirTy
@@ -639,14 +641,7 @@ evalCast' ck ty1 e ty2  =
        -> baseSizeToNatCont bsz $ \w -> 
            return $ MirExp (C.BVRepr w) (R.App $ E.BVIte e0 w (R.App $ E.BVLit w 1) (R.App $ E.BVLit w 0))
 
-
-
-
-{-      -- BV to Float
-      (M.Misc, M.TyInt bsz, TyFloat fsz) 
-       | MirExp (C.BVRepr sz) e0 <- e
-       -> return $ MirExp C.FloatRepr -}
-
+      -- other
       (M.Misc, M.TyCustom (M.BoxTy tb1), M.TyCustom (M.BoxTy tb2)) -> evalCast' ck tb1 e tb2
 
       (M.Unsize, M.TyRef (M.TyArray tp _sz) M.Immut, M.TyRef (M.TySlice tp') M.Immut)
@@ -708,7 +703,9 @@ evalCast ck op ty = do
 
 mkCustomTraitObject :: HasCallStack => M.DefId -> M.Ty -> MirExp s -> MirGenerator h s ret (MirExp s)
 mkCustomTraitObject traitName (TyClosure fname args) e@(MirExp baseTyr baseValue)
-   | M.did_name traitName == ("Fn", 0) = do
+   | M.did_name traitName == ("Fn", 0)
+     || M.did_name traitName == ("FnMut", 0)
+     || M.did_name traitName == ("FnOnce", 0) = do
       -- traceM $ "customTraitObj for " ++ show fname ++ " with args " ++ show args
       -- a trait object for a closure is just the closure value
       -- call is a custom operation
@@ -798,6 +795,16 @@ evalRefProj prj@(M.LvalueProjection base projElem) =
                      Just (Some idx') -> 
                         do r' <- subfieldRef ctx ref idx'
                            return (MirExp (MirReferenceRepr (ctx Ctx.! idx')) r')
+
+          M.PField idx _mirTy
+            | MirReferenceRepr elty2 <- elty
+            , idx == 0
+            -> do traceM $ "evalRefProj:" ++ fmt prj ++ " of type " ++ fmt (typeOf prj)
+                  traceM $ "produced evaluated base of type:" ++ show tp
+                  v <- readMirRef elty ref
+                  return (MirExp elty v)
+                  
+
 
           M.ConstantIndex offset _min_len fromend
             | C.VectorRepr tp' <- elty
@@ -1587,7 +1594,7 @@ callExp funid funsubst cargs = do
    isCustom <- resolveCustom funid funsubst
    case () of
      () | Just (CustomOp op) <- isCustom -> do
-          when (db > 3) $
+          when (db > 7) $
             traceM $ fmt (PP.fillSep [PP.text "At custom function call of",
                  pretty funid, PP.text "with arguments", pretty cargs, 
                  PP.text "and type parameters:", pretty funsubst])
@@ -1597,7 +1604,7 @@ callExp funid funsubst cargs = do
           op opTys ops
 
        | Just (CustomMirOp op) <- isCustom -> do
-          when (db > 3) $
+          when (db > 7) $
             traceM $ fmt (PP.fillSep [PP.text "At custom function call of",
                pretty funid, PP.text "with arguments", pretty cargs, 
                PP.text "and type parameters:", pretty funsubst])
@@ -1956,12 +1963,13 @@ genFn (M.Fn fname argvars sig body@(MirBody localvars blocks) statics) rettype =
     _ -> mirFail "bad thing happened"
 
 
+
 transDefine' :: forall h args ret.
   (HasCallStack, ?debug::Int, ?customOps::CustomOpMap, ?assertFalseOnError::Bool) 
   => CollectionState 
   -> M.Fn
   -> FH.FnHandle args ret
-  -> ST h (Core.SomeCFG MIR args ret)
+  -> ST h (Maybe (Core.SomeCFG MIR args ret))
 transDefine' colState fn (handle :: FH.FnHandle args ret) = do
       let rettype  = FH.handleReturnType handle
       let def :: G.FunctionDef MIR s2 FnState args ret
@@ -1969,23 +1977,35 @@ transDefine' colState fn (handle :: FH.FnHandle args ret) = do
             s = initFnState colState fn handle inputs 
             f = genFn fn rettype
       (R.SomeCFG g, []) <- G.defineFunction PL.InternalPos handle def
-      return $ SSA.toSSA g
+      -- Awful error catching code so that we can keep going, even when
+      -- we get things wrong
+      return $ unsafePerformIO $ do
+         catch (do ssa <- evaluate $ SSA.toSSA g
+                   return $Just ssa) $ \(SomeException e) -> do
+             if ?assertFalseOnError then do
+                when (?debug > 1) $ 
+                  traceM $ "WARNING: failed to translate " ++ fmt (fn^.fname) ++ "\n\t " ++ show e
+                return Nothing
+             else throw e
+
 
 transDefine :: forall h. (HasCallStack, ?debug::Int,
                          ?customOps::CustomOpMap, ?assertFalseOnError::Bool) 
   => CollectionState 
   -> M.Fn 
-  -> ST h (Text, Core.AnyCFG MIR)
+  -> ST h (Maybe (Text, (Core.AnyCFG MIR)))
 transDefine colState fn@(M.Fn fname fargs fsig _ _) =
   case (Map.lookup fname (colState^.handleMap)) of
     Nothing -> fail "bad handle!!"
     Just (MirHandle _hname _hsig (handle :: FH.FnHandle args ret)) -> do
       sg <- transDefine' colState fn handle
       case sg of
-         Core.SomeCFG g_ssa -> return (M.idText fname, Core.AnyCFG g_ssa)
+         Just (Core.SomeCFG g_ssa) -> return (Just (M.idText fname, (Core.AnyCFG g_ssa)))
+         Nothing -> return  Nothing
 
 -- | Make a binding for a MIR function that, when invoked, immediately translates
 -- the source code and then runs it
+-- (This code is currently unused)
 mkDelayedBinding :: forall p sym . (?debug::Int, HasCallStack,
     ?customOps::CustomOpMap, ?assertFalseOnError::Bool) =>
                     W4.IsExprBuilder sym
@@ -2004,7 +2024,7 @@ mkDelayedBinding colState fn@(M.Fn fname fargs fsig _ _) =
                               do liftIO $ putStrLn $ "translating (delayed) "
                                    ++ fmt fname 
                             args <- C.getOverrideArgs
-                            Core.SomeCFG cfg <- liftST $ transDefine' colState fn handle
+                            Just (Core.SomeCFG cfg) <- liftST $ transDefine' colState fn handle
                             C.bindFnHandle handle (C.UseCFG cfg (C.postdomInfo cfg))
                             (C.RegEntry _tp regval) <- C.callFnVal (C.HandleFnVal handle) args
                             return regval
@@ -2092,7 +2112,8 @@ transCollection col halloc = do
         colState = CollectionState hmap stm sm col 
 
     -- translate all of the functions
-    pairs <- mapM (transDefine (?libCS <> colState)) (Map.elems (col^.M.functions))
+    pairsM <- mapM (transDefine (?libCS <> colState)) (Map.elems (col^.M.functions))
+    let pairs = Maybe.catMaybes pairsM
     return $ RustModule
                 { _rmCS    = colState
                 , _rmCFGs  = Map.fromList pairs 

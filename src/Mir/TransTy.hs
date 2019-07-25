@@ -155,7 +155,9 @@ tyToRepr t0 = case t0 of
   M.TyCustom custom_t -> customtyToRepr custom_t
   
   -- FIXME: should this be a tuple? 
-  M.TyClosure _def_id _substs -> Some C.AnyRepr
+  M.TyClosure _def_id (M.Substs (_:t:ts)) -> -- Some C.AnyRepr
+    tyToReprCont t  $ \repr -> Some repr
+   -- tyListToCtxMaybe ts $ \repr -> Some (C.StructRepr repr)
   
   -- Strings are vectors of chars
   -- This is not the actual representation (which is packed into u8s)
@@ -187,7 +189,8 @@ tyToRepr t0 = case t0 of
 
   -- TODO: the only dynamic types that we support are closures
   M.TyDynamic _def -> Some C.AnyRepr
-  
+
+  -- Hack for FnOnce::Output
   M.TyProjection def _tyargs
    | def == (M.textId "::ops[0]::function[0]::FnOnce[0]::Output[0]")
      -> Some taggedUnionRepr
