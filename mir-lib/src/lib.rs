@@ -139,7 +139,7 @@ pub mod borrow;
 
 /* Core types and methods on primitives */
 
-pub mod cell;
+//pub mod cell;
 pub mod panic;
 pub mod panicking;
 pub mod pin;

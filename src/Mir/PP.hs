@@ -407,13 +407,14 @@ instance Pretty Promoted where
 
 instance Pretty Collection where
   pretty col =
-    vcat ([text "FNs"] ++
-          map pretty (Map.elems (col^.functions)) ++
-          [text "ADTs"] ++
-          map pretty (Map.elems (col^.adts)) ++
+    vcat (-- [text "FNs"] ++
+--          map pretty (Map.elems (col^.functions)) ++
+{-          [text "ADTs"] ++
+          map pretty (Map.elems (col^.adts)) ++ -}
           [text "TRAITs"] ++
-          map pretty (Map.elems (col^.traits)) ++
+          map pretty (Map.elems (col^.traits)) {- ++
           [text "IMPLs"] ++
           map pretty (Map.elems (col^.impls)) ++
           [text "STATICS"] ++
-          map pretty (Map.elems (col^.statics)))
+          map pretty (Map.elems (col^.statics)) -}
+         )

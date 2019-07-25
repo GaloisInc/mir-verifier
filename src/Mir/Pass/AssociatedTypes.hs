@@ -153,7 +153,7 @@ noAssoc = [textId "::ops[0]::function[0]::FnOnce[0]",
 
 -- | Extract untranslated ATs from the predicates
 -- (These include ATs from both regular predicates and TraitProjections)
-predATs :: Map TraitName Trait -> Predicate -> [AssocTy]
+predATs :: HasCallStack => Map TraitName Trait -> Predicate -> [AssocTy]
 predATs d (TraitPredicate did ss)
   | did `elem` noAssoc
   = []
@@ -169,13 +169,13 @@ predATs _d UnknownPredicate = []
 
 
 -- Calculate for ATs traits (don't try to prune)
-calcPredAssocTys :: Map TraitName Trait -> [Predicate] -> [AssocTy]
+calcPredAssocTys ::  HasCallStack => Map TraitName Trait -> [Predicate] -> [AssocTy]
 calcPredAssocTys d preds =
   (List.nub (concat (map (predATs d) preds)))
 
 
 -- Calculate for everything else (try to prune if already satisfied)
-atiPredAssocTys :: ATInfo -> [Predicate] -> [AssocTy]
+atiPredAssocTys ::  HasCallStack => ATInfo -> [Predicate] -> [AssocTy]
 atiPredAssocTys ati preds = atys where    
     raw_atys = concat (map (predATs (ati^.atCol.traits)) preds)
     tr_atys  = case abstractATs ati (map (\(s,dd)-> TyProjection s dd) raw_atys) of
@@ -198,9 +198,9 @@ atiPredAssocTys ati preds = atys where
 -- only after all of the traits that they mention in their predicates have been processed.
 calcTraitAssocTys :: HasCallStack => Map TraitName Trait -> Map TraitName Trait
 calcTraitAssocTys trs = go (Map.elems trs) Map.empty where
-  go :: [Trait] -> Map TraitName Trait -> Map TraitName Trait
+  go :: HasCallStack => [Trait] -> Map TraitName Trait -> Map TraitName Trait
   
-  addTraitATs :: Trait -> Map TraitName Trait -> Maybe (Map TraitName Trait)
+  addTraitATs :: HasCallStack => Trait -> Map TraitName Trait -> Maybe (Map TraitName Trait)
   addTraitATs tr done = if all (`Map.member` done) refs then
                           Just (Map.insert (tr^.traitName) trait' done)
                         else
@@ -335,7 +335,7 @@ implATDict col = go (concat (Map.elems (col^.impls))) mempty where
        else if length next == length tis then
               if (?debug > 1) then 
                   (trace $ "BUG in mkImplADict: not making progress during implATDict." ++
-                  "\nDropping remaining impls. ") this
+                  "\nDropping remaining impls. " ++ fmt (map (^.tiTraitRef) tis)) this
               else
                this
             else go next step where
@@ -371,7 +371,8 @@ closureATDict col =
 --   type Index::Output<[T],I> == SliceIndex<I,[T]>
 --   type ::iter::iterator::Iterator::Item<::slice::IterMut<lifetime,T>> == &mut T
 indexATDict :: HasCallStack => ATDict
-indexATDict =
+indexATDict = mempty
+{-  
   (mconcat
    [singletonATDict (textId "::ops[0]::index[0]::Index[0]::Output[0]")
     (\ substs -> case substs of
@@ -389,7 +390,7 @@ indexATDict =
           
         Substs _ ->
           Nothing)
-  ])
+  ]) -}
 
    
 ----------------------------------------------------------------------------------------

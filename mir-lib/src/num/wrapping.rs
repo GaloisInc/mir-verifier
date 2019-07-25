@@ -1,9 +1,16 @@
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use super::Wrapping;
 
 use ops::*;
-use ops::BitAnd;
-use ops::BitOr;
-
 
 #[allow(unused_macros)]
 macro_rules! sh_impl_signed {
@@ -26,7 +33,7 @@ macro_rules! sh_impl_signed {
         impl ShlAssign<$f> for Wrapping<$t> {
             #[inline]
             fn shl_assign(&mut self, other: $f) {
-                *self = (*self).shl(other);
+                *self = *self << other;
             }
         }
         forward_ref_op_assign! { impl ShlAssign, shl_assign for Wrapping<$t>, $f }
@@ -49,7 +56,7 @@ macro_rules! sh_impl_signed {
         impl ShrAssign<$f> for Wrapping<$t> {
             #[inline]
             fn shr_assign(&mut self, other: $f) {
-                *self = (*self).shr(other);
+                *self = *self >> other;
             }
         }
         forward_ref_op_assign! { impl ShrAssign, shr_assign for Wrapping<$t>, $f }
@@ -72,7 +79,7 @@ macro_rules! sh_impl_unsigned {
         impl ShlAssign<$f> for Wrapping<$t> {
             #[inline]
             fn shl_assign(&mut self, other: $f) {
-                *self = (*self).shl(other);
+                *self = *self << other;
             }
         }
         forward_ref_op_assign! { impl ShlAssign, shl_assign for Wrapping<$t>, $f }
@@ -91,7 +98,7 @@ macro_rules! sh_impl_unsigned {
         impl ShrAssign<$f> for Wrapping<$t> {
             #[inline]
             fn shr_assign(&mut self, other: $f) {
-                *self = (*self).shr(other);
+                *self = *self >> other;
             }
         }
         forward_ref_op_assign! { impl ShrAssign, shr_assign for Wrapping<$t>, $f }
@@ -138,7 +145,7 @@ macro_rules! wrapping_impl {
         impl AddAssign for Wrapping<$t> {
             #[inline]
             fn add_assign(&mut self, other: Wrapping<$t>) {
-                *self = (*self).add(other);
+                *self = *self + other;
             }
         }
         forward_ref_op_assign! { impl AddAssign, add_assign for Wrapping<$t>, Wrapping<$t> }
@@ -159,7 +166,7 @@ macro_rules! wrapping_impl {
         impl SubAssign for Wrapping<$t> {
             #[inline]
             fn sub_assign(&mut self, other: Wrapping<$t>) {
-                *self = (*self).sub(other);
+                *self = *self - other;
             }
         }
         forward_ref_op_assign! { impl SubAssign, sub_assign for Wrapping<$t>, Wrapping<$t> }
@@ -180,7 +187,7 @@ macro_rules! wrapping_impl {
         impl MulAssign for Wrapping<$t> {
             #[inline]
             fn mul_assign(&mut self, other: Wrapping<$t>) {
-                *self = (*self).mul(other);
+                *self = *self * other;
             }
         }
         forward_ref_op_assign! { impl MulAssign, mul_assign for Wrapping<$t>, Wrapping<$t> }
@@ -201,7 +208,7 @@ macro_rules! wrapping_impl {
         impl DivAssign for Wrapping<$t> {
             #[inline]
             fn div_assign(&mut self, other: Wrapping<$t>) {
-                *self = (*self).div(other);
+                *self = *self / other;
             }
         }
         forward_ref_op_assign! { impl DivAssign, div_assign for Wrapping<$t>, Wrapping<$t> }
@@ -222,7 +229,7 @@ macro_rules! wrapping_impl {
         impl RemAssign for Wrapping<$t> {
             #[inline]
             fn rem_assign(&mut self, other: Wrapping<$t>) {
-                *self = (*self).rem(other);
+                *self = *self % other;
             }
         }
         forward_ref_op_assign! { impl RemAssign, rem_assign for Wrapping<$t>, Wrapping<$t> }
@@ -245,7 +252,7 @@ macro_rules! wrapping_impl {
 
             #[inline]
             fn bitxor(self, other: Wrapping<$t>) -> Wrapping<$t> {
-                Wrapping((self.0).bitxor(other.0))
+                Wrapping(self.0 ^ other.0)
             }
         }
         forward_ref_binop! { impl BitXor, bitxor for Wrapping<$t>, Wrapping<$t>,
@@ -255,7 +262,7 @@ macro_rules! wrapping_impl {
         impl BitXorAssign for Wrapping<$t> {
             #[inline]
             fn bitxor_assign(&mut self, other: Wrapping<$t>) {
-                *self = (*self).bitxor(other);
+                *self = *self ^ other;
             }
         }
         forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for Wrapping<$t>, Wrapping<$t> }
@@ -266,7 +273,7 @@ macro_rules! wrapping_impl {
 
             #[inline]
             fn bitor(self, other: Wrapping<$t>) -> Wrapping<$t> {
-                Wrapping( (self.0).bitor(other.0) )
+                Wrapping(self.0 | other.0)
             }
         }
         forward_ref_binop! { impl BitOr, bitor for Wrapping<$t>, Wrapping<$t>,
@@ -276,7 +283,7 @@ macro_rules! wrapping_impl {
         impl BitOrAssign for Wrapping<$t> {
             #[inline]
             fn bitor_assign(&mut self, other: Wrapping<$t>) {
-                *self = (*self).bitor(other);
+                *self = *self | other;
             }
         }
         forward_ref_op_assign! { impl BitOrAssign, bitor_assign for Wrapping<$t>, Wrapping<$t> }
@@ -287,7 +294,7 @@ macro_rules! wrapping_impl {
 
             #[inline]
             fn bitand(self, other: Wrapping<$t>) -> Wrapping<$t> {
-                Wrapping( (self.0).bitand(other.0))
+                Wrapping(self.0 & other.0)
             }
         }
         forward_ref_binop! { impl BitAnd, bitand for Wrapping<$t>, Wrapping<$t>,
@@ -297,7 +304,7 @@ macro_rules! wrapping_impl {
         impl BitAndAssign for Wrapping<$t> {
             #[inline]
             fn bitand_assign(&mut self, other: Wrapping<$t>) {
-                *self = (*self).bitand(other);
+                *self = *self & other;
             }
         }
         forward_ref_op_assign! { impl BitAndAssign, bitand_assign for Wrapping<$t>, Wrapping<$t> }
@@ -307,7 +314,7 @@ macro_rules! wrapping_impl {
             type Output = Self;
             #[inline]
             fn neg(self) -> Self {
-                Wrapping(0).sub(self)
+                Wrapping(0) - self
             }
         }
         forward_ref_unop! { impl Neg, neg for Wrapping<$t>,
@@ -380,7 +387,7 @@ assert_eq!(n.count_ones(), 3);
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub const fn count_ones(self) -> u32 {
+                pub fn count_ones(self) -> u32 {
                     self.0.count_ones()
                 }
             }
@@ -400,7 +407,7 @@ assert_eq!(Wrapping(!0", stringify!($t), ").count_zeros(), 0);
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub const fn count_zeros(self) -> u32 {
+                pub fn count_zeros(self) -> u32 {
                     self.0.count_zeros()
                 }
             }
@@ -423,7 +430,7 @@ assert_eq!(n.trailing_zeros(), 3);
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub const fn trailing_zeros(self) -> u32 {
+                pub fn trailing_zeros(self) -> u32 {
                     self.0.trailing_zeros()
                 }
             }
@@ -432,8 +439,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// wrapping the truncated bits to the end of the resulting
             /// integer.
             ///
-            /// Please note this isn't the same operation as the `>>` shifting
-            /// operator!
+            /// Please note this isn't the same operation as `>>`!
             ///
             /// # Examples
             ///
@@ -449,9 +455,8 @@ assert_eq!(n.trailing_zeros(), 3);
             /// assert_eq!(n.rotate_left(32), m);
             /// ```
             #[inline]
-            #[cfg(rotate)]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-            pub const fn rotate_left(self, n: u32) -> Self {
+            pub fn rotate_left(self, n: u32) -> Self {
                 Wrapping(self.0.rotate_left(n))
             }
 
@@ -459,8 +464,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// wrapping the truncated bits to the beginning of the resulting
             /// integer.
             ///
-            /// Please note this isn't the same operation as the `<<` shifting
-            /// operator!
+            /// Please note this isn't the same operation as `<<`!
             ///
             /// # Examples
             ///
@@ -476,9 +480,8 @@ assert_eq!(n.trailing_zeros(), 3);
             /// assert_eq!(n.rotate_right(4), m);
             /// ```
             #[inline]
-            #[cfg(rotate)]            
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-            pub const fn rotate_right(self, n: u32) -> Self {
+            pub fn rotate_right(self, n: u32) -> Self {
                 Wrapping(self.0.rotate_right(n))
             }
 
@@ -502,7 +505,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// ```
             #[inline]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-            pub const fn swap_bytes(self) -> Self {
+            pub fn swap_bytes(self) -> Self {
                 Wrapping(self.0.swap_bytes())
             }
 
@@ -529,7 +532,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// ```
             #[unstable(feature = "reverse_bits", issue = "48763")]
             #[inline]
-            pub const fn reverse_bits(self) -> Self {
+            pub fn reverse_bits(self) -> Self {
                 Wrapping(self.0.reverse_bits())
             }
 
@@ -557,7 +560,7 @@ if cfg!(target_endian = \"big\") {
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub const fn from_be(x: Self) -> Self {
+                pub fn from_be(x: Self) -> Self {
                     Wrapping(<$t>::from_be(x.0))
                 }
             }
@@ -586,7 +589,7 @@ if cfg!(target_endian = \"little\") {
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub const fn from_le(x: Self) -> Self {
+                pub fn from_le(x: Self) -> Self {
                     Wrapping(<$t>::from_le(x.0))
                 }
             }
@@ -615,7 +618,7 @@ if cfg!(target_endian = \"big\") {
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub const fn to_be(self) -> Self {
+                pub fn to_be(self) -> Self {
                     Wrapping(self.0.to_be())
                 }
             }
@@ -644,7 +647,7 @@ if cfg!(target_endian = \"little\") {
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub const fn to_le(self) -> Self {
+                pub fn to_le(self) -> Self {
                     Wrapping(self.0.to_le())
                 }
             }
@@ -704,7 +707,7 @@ assert_eq!(n.leading_zeros(), 3);
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub const fn leading_zeros(self) -> u32 {
+                pub fn leading_zeros(self) -> u32 {
                     self.0.leading_zeros()
                 }
             }
@@ -781,7 +784,7 @@ assert!(!Wrapping(-10", stringify!($t), ").is_positive());
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub const fn is_positive(self) -> bool {
+                pub fn is_positive(self) -> bool {
                     self.0.is_positive()
                 }
             }
@@ -803,7 +806,7 @@ assert!(!Wrapping(10", stringify!($t), ").is_negative());
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub const fn is_negative(self) -> bool {
+                pub fn is_negative(self) -> bool {
                     self.0.is_negative()
                 }
             }
@@ -833,7 +836,7 @@ assert_eq!(n.leading_zeros(), 2);
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub const fn leading_zeros(self) -> u32 {
+                pub fn leading_zeros(self) -> u32 {
                     self.0.leading_zeros()
                 }
             }
@@ -862,7 +865,7 @@ assert!(!Wrapping(10", stringify!($t), ").is_power_of_two());
             doc_comment! {
                 concat!("Returns the smallest power of two greater than or equal to `self`.
 
-When return value overflows (i.e., `self > (1 << (N-1))` for type
+When return value overflows (i.e. `self > (1 << (N-1))` for type
 `uN`), overflows to `2^N = 0`.
 
 # Examples

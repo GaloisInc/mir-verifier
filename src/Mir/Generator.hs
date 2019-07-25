@@ -357,7 +357,7 @@ resolveStaticMethod methName substs traitName = do
                                   Nothing    -> 0
                 let ss'  = takeSubsts (fromInteger ulen) (mkSubsts unifier)
                  
-                when (db > 5) $ do
+                when (db > 6) $ do
                     traceM $ "***Found " ++ fmt methName ++ " in " ++ fmt traitName
                     traceM $ "\t traitSub is " ++ fmt traitSub
                     traceM $ "\t ss' is      " ++ fmt ss'

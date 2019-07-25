@@ -15,7 +15,7 @@
 //! as traits.
 
 #![stable(feature = "rust1", since = "1.0.0")]
-
+#[cfg(cell)]
 use cell::UnsafeCell;
 use cmp;
 #[cfg(hash)]
@@ -600,7 +600,7 @@ mod impls {
 #[lang = "freeze"]
 unsafe auto trait Freeze {}
 
-
+#[cfg(cell)]
 impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
 unsafe impl<T: ?Sized> Freeze for PhantomData<T> {}
 unsafe impl<T: ?Sized> Freeze for *const T {}

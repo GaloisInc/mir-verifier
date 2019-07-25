@@ -180,7 +180,7 @@ simulateMIR execFeatures (cruxOpts, mirOpts) sym p = do
         _ -> do
           halloc  <- C.newHandleAllocator
           prims      <- liftIO $ loadPrims (useStdLib mirOpts)
-          primModule <- let ?debug = 0 in
+          primModule <- -- let ?debug = 0 in
                         let ?assertFalseOnError = True in
                         stToIO $ translateMIR mempty prims halloc
           mir        <- stToIO $ translateMIR (primModule^.rmCS) col halloc

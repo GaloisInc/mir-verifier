@@ -1,24 +1,45 @@
-This rust cargo contains a single file `src/lib.rs` that is used to
-define the standard library for mir-verifier.
+This rust cargo contains a single library `src/lib.rs` that is used to
+define the standard library for mir-verifier. 
 
-This file is derived from the modules in
-https://github.com/rust-lang/rust/tree/master/src/libcore, in
-accordance with the MIT LICENCE.
+To be compatible with mir-lib, the libraries are derived from the
+source code from commit 1cf82fd9c0 (i.e. the nightly version of rust
+used by mir-json) of https://github.com/rust-lang/rust, in accordance
+with the MIT LICENCE. The modules themselves are from
+https://github.com/rust-lang/rust/tree/master/src/libcore,
 
 This version of mir-lib is self-contained. It does not import anything
 from `core`, only from other mir-lib modules. This is enabled with the
 #[no_core] attribute at the top of src/lib.rs
 
-To be compatible with mir-lib, the libraries are derived from the
-source code in rust version 1.31.0.
-
-(If mir-lib is updated, then the libraries will also need to be
+(If mir-json is updated, then the libraries will also need to be
 updated to the latest version. As there are still many manual edits to
 these libraries that will be an onerous process. We need a more
 automatic mechanism.)
 
+==================================================================
+* What is missing? How has the rust library source code been edited?
 
+Some parts of the libraries are disabled via config attributes as they
+rely on other parts that have not yet been included. In particular,
+these added attributes include:
 
+#[cfg(fmt)]   -- also remove deriving Debug
+#[cfg(hash)]  -- also remove deriving Hash
+#[cfg(ptr)]
+#[cfg(cell)]
+#[cfg(dec2flt)]
+#[cfg(index)]
+#[cfg(str)]
+#[cfg(trusted_random_access)]
+#[cfg(memchr)]
+#[cfg(drop)]
+#[cfg(any)]
+
+The lowest level of pointer manipulation (i.e. ptr.rs) is *not*
+include.  Operations that rely on these functions are edited to refer
+to "intrinsics::abort()" instead. If these operations are needed by
+the simulator, they should be made available via overrides.
+(As well as any of the other intrinsics.)
 
 ==================================================================
 
@@ -34,23 +55,7 @@ How to add new pieces of libcore to mir-lib:
    seems easier to leave it enabled, since most code is copied from
    libcore and thus already has stability attributes.)
 
- - `#[lang]` attrs should be commented or `#[cfg_attr]`'d out, instead
-   of being deleted entirely.  This part isn't essential, but will
-   make it easier to re-enable all the lang items in the future.
 
-Note from Stuart: If we ever get mir-lib to a state where it's fully
-self-contained (no imports from `core`, only from other mir-lib
-modules) and has implementations of all the essential lang items, then
-we can switch from `#[no_std]` to `#[no_core]`.  We'd also need to
-re-enable all the `#[lang]` items as part of that change, which is why
-it would be nice to leave them in place.  Making the switch would
-allow mir-lib to implement some additional pieces, such as the
-overlapping slice impls noted previously.
-
-(The alternative to finishing mir-lib would be to make the verifier
-replace functions that have translation errors with `assert!(false)`,
-so we could translate libcore directly.  I'm not sure which way would
-be easier.)
 
 
 

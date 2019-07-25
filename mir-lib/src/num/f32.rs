@@ -1,3 +1,13 @@
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 //! This module provides constants which are specific to the implementation
 //! of the `f32` floating point data type.
 //!
@@ -7,11 +17,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(mem)]
 use mem;
 use num::FpCategory;
-
-use intrinsics;
 
 /// The radix or base of the internal representation of `f32`.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -144,11 +151,10 @@ pub mod consts {
     pub const LN_10: f32 = 2.30258509299404568401799145468436421_f32;
 }
 
-
 #[lang = "f32"]
 #[cfg(not(test))]
 impl f32 {
-    /// Returns `true` if this value is `NaN`.
+    /// Returns `true` if this value is `NaN` and false otherwise.
     ///
     /// ```
     /// use std::f32;
@@ -165,17 +171,8 @@ impl f32 {
         self != self
     }
 
-    // FIXME(#50145): `abs` is publicly unavailable in libcore due to
-    // concerns about portability, so this implementation is for
-    // private use internally.
-    #[inline]
-    fn abs_private(self) -> f32 {
-        //f32::from_bits(self.to_bits() & 0x7fff_ffff)
-        unsafe { intrinsics::abort() }
-    }
-
-    /// Returns `true` if this value is positive infinity or negative infinity, and
-    /// `false` otherwise.
+    /// Returns `true` if this value is positive infinity or negative infinity and
+    /// false otherwise.
     ///
     /// ```
     /// use std::f32;
@@ -191,13 +188,11 @@ impl f32 {
     /// assert!(inf.is_infinite());
     /// assert!(neg_inf.is_infinite());
     /// ```
-/*    #[stable(feature = "rust1", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    
-SCW: need to change from Real -> Float
     pub fn is_infinite(self) -> bool {
-        self.abs_private() == INFINITY
-    } */
+        self == INFINITY || self == NEG_INFINITY
+    }
 
     /// Returns `true` if this number is neither infinite nor `NaN`.
     ///
@@ -215,15 +210,11 @@ SCW: need to change from Real -> Float
     /// assert!(!inf.is_finite());
     /// assert!(!neg_inf.is_finite());
     /// ```
-/*  #[stable(feature = "rust1", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-  SCW: need to change from Real to Float in mir-verifier    
     pub fn is_finite(self) -> bool {
-        // There's no need to handle NaN separately: if self is NaN,
-        // the comparison is not true, exactly as desired.
-        self.abs_private() < INFINITY
+        !(self.is_nan() || self.is_infinite())
     }
-*/
 
     /// Returns `true` if the number is neither zero, infinite,
     /// [subnormal][subnormal], or `NaN`.
@@ -248,10 +239,8 @@ SCW: need to change from Real -> Float
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-//SCW: override this    
     pub fn is_normal(self) -> bool {
-        //        self.classify() == FpCategory::Normal
-        unsafe { intrinsics::abort() }        
+        self.classify() == FpCategory::Normal
     }
 
     /// Returns the floating point category of the number. If only one property
@@ -268,7 +257,6 @@ SCW: need to change from Real -> Float
     /// assert_eq!(num.classify(), FpCategory::Normal);
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
     /// ```
-    #[cfg(mem)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn classify(self) -> FpCategory {
         const EXP_MASK: u32 = 0x7f800000;
@@ -284,7 +272,7 @@ SCW: need to change from Real -> Float
         }
     }
 
-    /// Returns `true` if `self` has a positive sign, including `+0.0`, `NaN`s with
+    /// Returns `true` if and only if `self` has a positive sign, including `+0.0`, `NaN`s with
     /// positive sign bit and positive infinity.
     ///
     /// ```
@@ -300,7 +288,7 @@ SCW: need to change from Real -> Float
         !self.is_sign_negative()
     }
 
-    /// Returns `true` if `self` has a negative sign, including `-0.0`, `NaN`s with
+    /// Returns `true` if and only if `self` has a negative sign, including `-0.0`, `NaN`s with
     /// negative sign bit and negative infinity.
     ///
     /// ```
@@ -312,12 +300,10 @@ SCW: need to change from Real -> Float
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-//SCW: override this    
     pub fn is_sign_negative(self) -> bool {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
         // applies to zeros and NaNs as well.
-        //        self.to_bits() & 0x8000_0000 != 0
-        false
+        self.to_bits() & 0x8000_0000 != 0
     }
 
     /// Takes the reciprocal (inverse) of a number, `1/x`.
@@ -438,7 +424,6 @@ SCW: need to change from Real -> Float
     /// assert_eq!((12.5f32).to_bits(), 0x41480000);
     ///
     /// ```
-    #[cfg(mem)]
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
     pub fn to_bits(self) -> u32 {
@@ -460,7 +445,7 @@ SCW: need to change from Real -> Float
     /// signaling NaNs on MIPS are quiet NaNs on x86, and vice-versa.
     ///
     /// Rather than trying to preserve signaling-ness cross-platform, this
-    /// implementation favors preserving the exact bits. This means that
+    /// implementation favours preserving the exact bits. This means that
     /// any payloads encoded in NaNs will be preserved even if the result of
     /// this method is sent over the network from an x86 machine to a MIPS one.
     ///
@@ -482,8 +467,7 @@ SCW: need to change from Real -> Float
     /// let v = f32::from_bits(0x41480000);
     /// let difference = (v - 12.5).abs();
     /// assert!(difference <= 1e-5);
-    /// ``` 
-    #[cfg(mem)]   
+    /// ```
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
     pub fn from_bits(v: u32) -> Self {

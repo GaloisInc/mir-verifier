@@ -1,3 +1,13 @@
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 //! This module provides constants which are specific to the implementation
 //! of the `f64` floating point data type.
 //!
@@ -7,7 +17,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(mem)]
 use mem;
 use num::FpCategory;
 
@@ -142,11 +151,10 @@ pub mod consts {
     pub const LN_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
-
 #[lang = "f64"]
 #[cfg(not(test))]
 impl f64 {
-    /// Returns `true` if this value is `NaN`.
+    /// Returns `true` if this value is `NaN` and false otherwise.
     ///
     /// ```
     /// use std::f64;
@@ -163,19 +171,8 @@ impl f64 {
         self != self
     }
 
-//SCW:override this
-    
-    // FIXME(#50145): `abs` is publicly unavailable in libcore due to
-    // concerns about portability, so this implementation is for
-    // private use internally.
-    #[inline]
-    fn abs_private(self) -> f64 {
-        //        f64::from_bits(self.to_bits() & 0x7fff_ffff_ffff_ffff)
-        self
-    }
-
-    /// Returns `true` if this value is positive infinity or negative infinity, and
-    /// `false` otherwise.
+    /// Returns `true` if this value is positive infinity or negative infinity and
+    /// false otherwise.
     ///
     /// ```
     /// use std::f64;
@@ -191,12 +188,11 @@ impl f64 {
     /// assert!(inf.is_infinite());
     /// assert!(neg_inf.is_infinite());
     /// ```
-/*    #[stable(feature = "rust1", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[cfg(mem)]    
     pub fn is_infinite(self) -> bool {
-        self.abs_private() == INFINITY
-    } */
+        self == INFINITY || self == NEG_INFINITY
+    }
 
     /// Returns `true` if this number is neither infinite nor `NaN`.
     ///
@@ -214,13 +210,11 @@ impl f64 {
     /// assert!(!inf.is_finite());
     /// assert!(!neg_inf.is_finite());
     /// ```
-/*    #[stable(feature = "rust1", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_finite(self) -> bool {
-        // There's no need to handle NaN separately: if self is NaN,
-        // the comparison is not true, exactly as desired.
-        self.abs_private() < INFINITY
-    } */
+        !(self.is_nan() || self.is_infinite())
+    }
 
     /// Returns `true` if the number is neither zero, infinite,
     /// [subnormal][subnormal], or `NaN`.
@@ -243,12 +237,10 @@ impl f64 {
     /// assert!(!lower_than_min.is_normal());
     /// ```
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
-//SCW:override this    
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_normal(self) -> bool {
-        //        self.classify() == FpCategory::Normal
-        true
+        self.classify() == FpCategory::Normal
     }
 
     /// Returns the floating point category of the number. If only one property
@@ -266,7 +258,6 @@ impl f64 {
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg(mem)]    
     pub fn classify(self) -> FpCategory {
         const EXP_MASK: u64 = 0x7ff0000000000000;
         const MAN_MASK: u64 = 0x000fffffffffffff;
@@ -281,7 +272,7 @@ impl f64 {
         }
     }
 
-    /// Returns `true` if `self` has a positive sign, including `+0.0`, `NaN`s with
+    /// Returns `true` if and only if `self` has a positive sign, including `+0.0`, `NaN`s with
     /// positive sign bit and positive infinity.
     ///
     /// ```
@@ -305,7 +296,7 @@ impl f64 {
         self.is_sign_positive()
     }
 
-    /// Returns `true` if `self` has a negative sign, including `-0.0`, `NaN`s with
+    /// Returns `true` if and only if `self` has a negative sign, including `-0.0`, `NaN`s with
     /// negative sign bit and negative infinity.
     ///
     /// ```
@@ -315,12 +306,10 @@ impl f64 {
     /// assert!(!f.is_sign_negative());
     /// assert!(g.is_sign_negative());
     /// ```
-//SCW:override this    
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_sign_negative(self) -> bool {
-        //        self.to_bits() & 0x8000_0000_0000_0000 != 0
-        false
+        self.to_bits() & 0x8000_0000_0000_0000 != 0
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -448,7 +437,6 @@ impl f64 {
     /// assert_eq!((12.5f64).to_bits(), 0x4029000000000000);
     ///
     /// ```
-    #[cfg(mem)]    
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
     pub fn to_bits(self) -> u64 {
@@ -493,7 +481,6 @@ impl f64 {
     /// let difference = (v - 12.5).abs();
     /// assert!(difference <= 1e-5);
     /// ```
-    #[cfg(mem)]    
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
     pub fn from_bits(v: u64) -> Self {

@@ -36,6 +36,9 @@ module Mir.Trans(transCollection,transStatics,RustModule(..)
 
 import Control.Monad
 import Control.Monad.ST
+import System.IO
+import Control.Monad.IO.Class
+
 
 import Control.Lens hiding (op,(|>))
 import Data.Foldable
@@ -55,14 +58,22 @@ import Data.String (fromString)
 import Numeric
 import Numeric.Natural()
 
-import qualified Lang.Crucible.CFG.Generator as G
+
 import qualified Lang.Crucible.FunctionHandle as FH
 import qualified What4.ProgramLoc as PL
 import qualified What4.FunctionName as FN
+import qualified What4.Interface as W4
+import           What4.Utils.MonadST (liftST)
+import qualified Lang.Crucible.Simulator.OverrideSim as C
+import qualified Lang.Crucible.Simulator.ExecutionTree as C
+import qualified Lang.Crucible.Simulator.RegValue as C
+import qualified Lang.Crucible.Simulator.RegMap as C
+import qualified Lang.Crucible.Analysis.Postdom as C
 import qualified Lang.Crucible.CFG.Reg as R
 import qualified Lang.Crucible.CFG.SSAConversion as SSA
 import qualified Lang.Crucible.CFG.Expr as E
 import qualified Lang.Crucible.CFG.Core as Core
+import qualified Lang.Crucible.CFG.Generator as G
 import qualified Lang.Crucible.Syntax as S
 import qualified Lang.Crucible.Types as C
 import qualified Lang.Crucible.Substitution()
@@ -815,6 +826,7 @@ evalRefProj prj@(M.LvalueProjection base projElem) =
                                 show base ++ " " ++ show projElem ++ " " ++ show idxTy)
           M.Downcast idx ->
             return (MirExp tp ref)
+
           _ -> mirFail ("Unexpected interior reference " ++ fmt base ++ " PROJECTED  " ++ show projElem
                     ++ "\n for type " ++ show elty)
        _ -> mirFail ("Expected reference value in lvalue projection: " ++ show tp ++ " " ++ show base)
@@ -1371,7 +1383,7 @@ lookupFunction :: forall h s ret. HasCallStack => MethName -> Substs
 lookupFunction nm (Substs funsubst)
   | Some k <- peanoLength funsubst = do
   db   <- use debugLevel
-  when (db > 3) $
+  when (db > 6) $
     traceM $ "**lookupFunction: trying to resolve " ++ fmt nm ++ fmt (Substs funsubst)
 
   -- these  are defined at the bottom of Mir.Generator
@@ -1450,7 +1462,7 @@ lookupFunction nm (Substs funsubst)
             let gens   = fs^.fsgenerics
             let hsubst = Substs $ funsubst
 
-            when (db > 3) $ do
+            when (db > 6) $ do
               traceM $ "**lookupFunction: " ++ fmt nm ++ fmt (Substs funsubst) ++ " resolved as normal call"
               traceM $ "\tpreds are " ++ fmt preds
               traceM $ "\tgens are " ++ fmt gens
@@ -1465,7 +1477,7 @@ lookupFunction nm (Substs funsubst)
              fun <- evalRval exp
              let fun' = instantiateTraitMethod fun (Substs methsubst)
              let ssig = specialize sig methsubst 
-             when (db > 3) $ do
+             when (db > 6) $ do
                traceM $ "**lookupFunction: " ++ fmt nm ++ fmt (Substs funsubst) ++ " resolved as dictionary projection" 
                traceM $ "\tfound var       " ++ fmt var
                traceM $ "\texp type     is " ++ fmt sig
@@ -1483,7 +1495,7 @@ lookupFunction nm (Substs funsubst)
              let exp  = mkFunExp (Substs methsubst) (sig^.fsgenerics) handle
              let ssig = specialize sig methsubst
 
-             when (db > 3) $ do
+             when (db > 6) $ do
                traceM $ "**lookupFunction: " ++ fmt nm ++ fmt (Substs funsubst) ++ " resolved as static trait call" 
                traceM $ "\tfound handle    " ++ fmt name
                traceM $ "\tmirHandle ty is " ++ fmt sig
@@ -1525,7 +1537,7 @@ mkDict (var, pred@(TraitPredicate tn (Substs ss))) = do
                      preds  = sig  ^.fspredicates
                  if (length preds > length spreds) then do
                     let extras = drop (length spreds) preds
-                    when (db > 3) $ do
+                    when (db > 7) $ do
                        traceM $ fmt fn ++ " for " ++ fmt pred
                        traceM $ "sig:    " ++ fmt sig
                        traceM $ "preds:  " ++ fmt preds
@@ -1556,10 +1568,10 @@ mkDict (var, pred@(TraitPredicate tn (Substs ss))) = do
                                   ++ " of type " ++ fmt (var^.varty)
           go (Field fn ty _) = mirFail $ "BUG: mkDict, fields must be functions, found"
                                         ++ fmt ty ++ " for " ++ fmt fn ++ " instead."
-      when (db > 3) $ traceM $ "Building dictionary for " ++ fmt pred
+      when (db > 7) $ traceM $ "Building dictionary for " ++ fmt pred
                     ++ " of type " ++ fmt (var^.varty)
       entries <- mapM go fields
-      when (db > 3) $ traceM $ "Done building dictionary for " ++ fmt var
+      when (db > 7) $ traceM $ "Done building dictionary for " ++ fmt var
       return $ buildTaggedUnion 0 entries
 mkDict (var, _) = mirFail $ "BUG: mkDict, only make dictionaries for TraitPredicates"
 
@@ -1592,7 +1604,7 @@ callExp funid funsubst cargs = do
           op cargs
 
        | Just (MirExp (C.FunctionHandleRepr ifargctx ifret) polyinst, sig) <- mhand -> do
-          when (db > 3) $
+          when (db > 7) $
              traceM $ fmt (PP.fillSep [PP.text "At normal function call of",
                  pretty funid, PP.text "with arguments", pretty cargs,
                  PP.text "sig:",pretty sig,
@@ -1921,7 +1933,7 @@ genFn (M.Fn fname argvars sig body@(MirBody localvars blocks) statics) rettype =
 
 
   db <- use debugLevel
-  when (db > 3) $ do
+  when (db > 5) $ do
      vmm <- use varMap
      let showVar var = fmt var ++ " : " ++ fmt (M.typeOf var)
      traceM $ "-----------------------------------------------------------------------------"
@@ -1943,7 +1955,24 @@ genFn (M.Fn fname argvars sig body@(MirBody localvars blocks) statics) rettype =
        G.jump lbl
     _ -> mirFail "bad thing happened"
 
-transDefine :: forall h. (HasCallStack, ?debug::Int, ?customOps::CustomOpMap, ?assertFalseOnError::Bool) 
+
+transDefine' :: forall h args ret.
+  (HasCallStack, ?debug::Int, ?customOps::CustomOpMap, ?assertFalseOnError::Bool) 
+  => CollectionState 
+  -> M.Fn
+  -> FH.FnHandle args ret
+  -> ST h (Core.SomeCFG MIR args ret)
+transDefine' colState fn (handle :: FH.FnHandle args ret) = do
+      let rettype  = FH.handleReturnType handle
+      let def :: G.FunctionDef MIR s2 FnState args ret
+          def inputs = (s,f) where
+            s = initFnState colState fn handle inputs 
+            f = genFn fn rettype
+      (R.SomeCFG g, []) <- G.defineFunction PL.InternalPos handle def
+      return $ SSA.toSSA g
+
+transDefine :: forall h. (HasCallStack, ?debug::Int,
+                         ?customOps::CustomOpMap, ?assertFalseOnError::Bool) 
   => CollectionState 
   -> M.Fn 
   -> ST h (Text, Core.AnyCFG MIR)
@@ -1951,14 +1980,53 @@ transDefine colState fn@(M.Fn fname fargs fsig _ _) =
   case (Map.lookup fname (colState^.handleMap)) of
     Nothing -> fail "bad handle!!"
     Just (MirHandle _hname _hsig (handle :: FH.FnHandle args ret)) -> do
-      let rettype  = FH.handleReturnType handle
-      let def :: G.FunctionDef MIR s2 FnState args ret
-          def inputs = (s,f) where
-            s = initFnState colState fn handle inputs 
-            f = genFn fn rettype
-      (R.SomeCFG g, []) <- G.defineFunction PL.InternalPos handle def
-      case SSA.toSSA g of
-        Core.SomeCFG g_ssa -> return (M.idText fname, Core.AnyCFG g_ssa)
+      sg <- transDefine' colState fn handle
+      case sg of
+         Core.SomeCFG g_ssa -> return (M.idText fname, Core.AnyCFG g_ssa)
+
+-- | Make a binding for a MIR function that, when invoked, immediately translates
+-- the source code and then runs it
+mkDelayedBinding :: forall p sym . (?debug::Int, HasCallStack,
+    ?customOps::CustomOpMap, ?assertFalseOnError::Bool) =>
+                    W4.IsExprBuilder sym
+                 => CollectionState
+                 -> M.Fn
+                 -> C.FnBinding p sym MIR
+mkDelayedBinding colState fn@(M.Fn fname fargs fsig _ _) =
+  case (Map.lookup fname (colState^.handleMap)) of
+    Nothing -> error "bad handle!!"
+    Just (MirHandle _hname _hsig (handle :: FH.FnHandle args ret)) -> 
+      let fnm = FN.functionNameFromText (fromString (show fname))
+          rettype  = FH.handleReturnType handle
+
+          overrideSim :: C.OverrideSim p sym MIR r args ret (C.RegValue sym ret)
+          overrideSim  = do when (?debug > 3) $
+                              do liftIO $ putStrLn $ "translating (delayed) "
+                                   ++ fmt fname 
+                            args <- C.getOverrideArgs
+                            Core.SomeCFG cfg <- liftST $ transDefine' colState fn handle
+                            C.bindFnHandle handle (C.UseCFG cfg (C.postdomInfo cfg))
+                            (C.RegEntry _tp regval) <- C.callFnVal (C.HandleFnVal handle) args
+                            return regval
+      in
+         C.FnBinding handle (C.UseOverride (C.mkOverride' fnm rettype overrideSim))
+
+-- | Make bindings for all functions in the CollectionState that have associated
+-- function handles. The result is suitable for passing to C.initSimContext
+mkDelayedBindings ::
+  forall p sym .
+  (W4.IsExprBuilder sym, ?debug::Int, HasCallStack,
+    ?customOps::CustomOpMap, ?assertFalseOnError::Bool) =>
+  CollectionState ->
+  C.FunctionBindings p sym MIR
+mkDelayedBindings colState =
+  let bindings = [ mkDelayedBinding colState fn
+       | fn <- Map.elems $ colState^.collection.functions
+       ]
+  in
+    C.fnBindingsFromList bindings
+
+
 
 
 -- | Allocate method handles for each of the functions in the Collection
@@ -2010,7 +2078,13 @@ transCollection col halloc = do
             g <- G.freshGlobalVar halloc gname staticRepr
             case C.checkClosed staticRepr of
                Just C.Dict -> return $ Map.insert (static^.sName) (StaticVar g) staticMap
-               Nothing -> error $ "BUG: Invalid type for static var: " ++ show staticRepr
+               Nothing -> 
+                 if ?debug > 1 then do
+                    traceM ("BUG: Invalid type for static var: " ++ fmt (static^.sName)
+                            ++ " of type " ++ show staticRepr)
+                    return staticMap
+                 else
+                    return staticMap
 
     sm <- foldrM allocateStatic Map.empty (col^.statics)
 

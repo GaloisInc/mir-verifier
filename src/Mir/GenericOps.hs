@@ -32,7 +32,7 @@ import Data.Text (Text)
 import Data.Vector(Vector)
 import qualified Data.Vector as V
 
-import Control.Monad.Except(MonadError(..))
+import Control.Monad.Except(MonadError(..),when)
 import Control.Lens((^.),(&),(%~), makeLenses)
 
 import Mir.DefId
@@ -347,6 +347,8 @@ abstractATs_Predicate :: (HasCallStack, MonadError String m) => ATInfo -> Predic
 abstractATs_Predicate ati (TraitPredicate tn ss) 
     | Just tr2 <- (ati^.atCol.traits) Map.!? tn
     = do let ats  = map (\(n,ss') -> TyProjection n ss') (tr2^.traitAssocTys)
+         when (length ats > 0 && lengthSubsts ss == 0) $
+           throwError $ "no substitution for ATs in " ++ fmt (TraitPredicate tn ss) 
          let ats' = Substs (tySubst ss ats)
          ss1  <- abstractATs ati ss
          ss2  <- abstractATs ati ats'
@@ -785,11 +787,11 @@ replaceList ((old,new) : vs) a = replaceList vs $ replaceLvalue old new a
 class GenericOps' f where
   relocate'      :: f p -> f p
   markCStyle'    :: (Map.Map DefId Adt,Collection) -> f p -> f p
-  tySubst'       :: Substs -> f p -> f p 
+  tySubst'       :: HasCallStack => Substs -> f p -> f p 
   replaceVar'    :: Var -> Var -> f p -> f p
   replaceLvalue' :: Lvalue -> Lvalue -> f p -> f p
   numTyParams'   :: f p -> Integer
-  abstractATs'   :: (MonadError String m) => ATInfo -> f p -> m (f p)
+  abstractATs'   :: (MonadError String m, HasCallStack) => ATInfo -> f p -> m (f p)
   modifyPreds'   :: RUPInfo -> f p -> f p
   
 instance GenericOps' V1 where

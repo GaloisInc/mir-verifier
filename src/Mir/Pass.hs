@@ -72,6 +72,7 @@ passId = id
 
 passTrace :: String -> Pass
 passTrace str col =
+  col `seq`
   if (?debug > 5) then 
       ((trace $ "*********MIR collection " ++ str ++ "*******\n"
                 ++ fmt col ++ "\n****************************")
