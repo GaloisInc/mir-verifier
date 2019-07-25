@@ -331,14 +331,14 @@ abstractATs_Ty ati ty@(TyProjection d substs)
        case lookupATDict (ati^.atCol . adict) (d,substs') of
          Just nty -> return nty
          Nothing -> do
-           throwError ("WARNING: " ++ fmt ty ++ " with unknown translation.\n"++
+{-           throwError ("WARNING: " ++ fmt ty ++ " with unknown translation.\n"++
                       case (ati^.atCol . traits) Map.!? (getTraitName d) of
                         Just tr -> "found trait " -- ++ fmt tr ++
                           -- "\n with impls " -- ++ concat (map fmt (getImpls (ati^.atCol) (getTraitName d)))
                         Nothing ->
-                          "cannot find trait " ++ fmt (getTraitName d) ++ " in collection.")
+                          "cannot find trait " ++ fmt (getTraitName d) ++ " in collection.") -}
                       
-           --return ty
+           return ty
 
 abstractATs_Ty s ty = (to <$> (abstractATs' s (from ty)))
 

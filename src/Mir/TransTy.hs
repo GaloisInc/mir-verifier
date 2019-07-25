@@ -194,8 +194,9 @@ tyToRepr t0 = case t0 of
   M.TyProjection def _tyargs
    | def == (M.textId "::ops[0]::function[0]::FnOnce[0]::Output[0]")
      -> Some taggedUnionRepr
-  M.TyProjection _def _tyargs -> error $ "BUG: all uses of TyProjection should have been eliminated, found "
-    ++ fmt t0
+  M.TyProjection _def _tyargs ->
+    Some taggedUnionRepr
+--     error $ "BUG: all uses of TyProjection should have been eliminated, found " ++ fmt t0
   M.TyFnDef _def substs ->
     -- TODO: lookup the type of the function and translate that type
     Some C.AnyRepr

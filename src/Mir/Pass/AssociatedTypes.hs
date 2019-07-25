@@ -356,7 +356,6 @@ implATDict col = go 0 (concat (Map.elems (col^.impls))) mempty where
   
   go :: Int -> [TraitImpl] -> ATDict -> ATDict  
   go i tis done =
-    trace ("*****Step " ++ show i ++ "\n")  $
     let (next_done, next_tis) = foldMaybe addImpl tis done in
     if null next_tis
        then next_done
@@ -479,6 +478,7 @@ translateTrait ati trait =
 -- associated types
 
 -- This involves:
+--    translating the types in the TraitRef & adding any ATs for the 
 --    adding impl ATs to the generics
 --    updating the local adict with new ATs, as well as any ATs defined in this impl
 translateImpl :: (HasCallStack,?debug::Int) => ATInfo -> TraitImpl -> TraitImpl

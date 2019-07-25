@@ -796,11 +796,12 @@ evalRefProj prj@(M.LvalueProjection base projElem) =
                         do r' <- subfieldRef ctx ref idx'
                            return (MirExp (MirReferenceRepr (ctx Ctx.! idx')) r')
 
+          -- This case is for FnMut closures and is almost certainly wrong.
           M.PField idx _mirTy
             | MirReferenceRepr elty2 <- elty
             , idx == 0
-            -> do traceM $ "evalRefProj:" ++ fmt prj ++ " of type " ++ fmt (typeOf prj)
-                  traceM $ "produced evaluated base of type:" ++ show tp
+            -> do --traceM $ "evalRefProj:" ++ fmt prj ++ " of type " ++ fmt (typeOf prj)
+                  --traceM $ "produced evaluated base of type:" ++ show tp
                   v <- readMirRef elty ref
                   return (MirExp elty v)
                   

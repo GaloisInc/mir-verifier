@@ -406,15 +406,15 @@ instance Pretty Promoted where
   pretty (Promoted i) = text "{{promoted}}" <> brackets (pretty i)
 
 instance Pretty Collection where
-  pretty col = text "COLLECTION"
---    vcat (-- [text "FNs"] ++
---          map pretty (Map.elems (col^.functions)) ++
-{-        [text "ADTs"] ++
+  pretty col = --text "COLLECTION"
+    vcat ([text "FNs"] ++
+          map pretty (Map.elems (col^.functions)) ++
+         [text "ADTs"] ++
           map pretty (Map.elems (col^.adts)) ++ 
           [text "TRAITs"] ++
           map pretty (Map.elems (col^.traits)) ++
           [text "IMPLs"] ++
           map pretty (Map.elems (col^.impls)) ++
           [text "STATICS"] ++
-          map pretty (Map.elems (col^.statics)) -}
---         )
+          map pretty (Map.elems (col^.statics)) 
+         )

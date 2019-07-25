@@ -292,7 +292,7 @@ mirFail str = do
   b  <- use assertFalseOnError
   db <- use debugLevel
   f  <- use currentFn
-  if b then do
+  if True then do
          when (db > 1) $ do
            traceM ("Translation failure: " ++ str)
          when (db > 2) $ do
