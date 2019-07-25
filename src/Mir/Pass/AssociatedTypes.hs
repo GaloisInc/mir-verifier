@@ -73,6 +73,8 @@ traceCollection_AT col = seq col .
 -- 1. *identify* the associated types in all traits, and record them
 --     (addTraitAssocTys)
 --
+-- 1a. identify the associated types in impls and record them (addImplAssocTys)
+--
 -- 2. update the adict from the impls and add "custom" associations
 --      because ATs can be defined in terms of other ATs, we need to process the 
 --      impls topologically to make sure that the result is AT-free.
@@ -106,16 +108,24 @@ passAssociatedTypes col =
        col1  =
          col  & traits    %~ Map.union onlyTraitsWithATs
 
+       -- 1a. we need to calculate the impl associated types (from the impl predicates) before we
+       -- calculate the ATDict. This is because, while calculating the adict we may need to use
+       -- an associated type to translate the RHS of a type member in an impl.
+       col1a =
+         col1 & impls     %~ fmap (addImplAssocTys info1)
+           where info1 = ATInfo 0 0 (?mirLib <> col1)
+                            (error "Should only need collection here")
+         
        -- 2. create dictionary of known associated types
        -- and add it to the current collection
-       col2   = col1 & adict .~ (implATDict col1     <> closureATDict col1)
+       col2   = col1a & adict .~ (implATDict col1a     <> closureATDict col1a)
 
        -- 3. find ATs for functions, fn types in traitItems and impls
        -- We (ab)use the ATInfo to prune out statically known ATs
        col3  =
          col2 & functions %~ fmap (addFnAssocTys info1)
               & traits    %~ fmap (\tr -> tr & traitItems %~ fmap (addTraitFnAssocTys info1 tr))
-              & impls     %~ fmap (addImplAssocTys info1)
+              -- & impls     %~ fmap (addImplAssocTys info1)
            where info1 =  ATInfo 0 0 (?mirLib <> col2)
                             (error "Should ONLY need collection here")
                           
@@ -270,13 +280,24 @@ addTraitFnAssocTys ati tr (TraitMethod did sig) =
 addTraitFnAssocTys ati tr it = it
 
 ----------------------------------------------------------------------------------------
+-- Foldr a partial function over a list, accumulating the results that are defined and
+-- remembering elements that are not.
 foldMaybe :: (a -> b -> Maybe b) -> [a] -> b -> (b, [a])
 foldMaybe f [] b = (b,[])
 foldMaybe f (x:xs) b =
-  let (b',as) = foldMaybe f xs b in
+  let (b',ys) = foldMaybe f xs b in
   case f x b' of
-    Just b'' -> (b'',as)
-    Nothing -> (b',x:as)
+    Just b'' -> (b'',ys)
+    Nothing -> (b',x:ys)
+
+foldEither :: (a -> b -> Either b b) -> [a] -> b -> (b, [a])
+foldEither f [] b = (b,[])
+foldEither f (x:xs) b =
+  let (b',ys) = foldEither f xs b in
+  case f x b' of
+    Right b'' -> (b'',ys)
+    Left  b'' -> (b'',x:ys)
+
   
       
 -- | Create a mapping from associated types (DefId,Substs) to their definitions
@@ -290,59 +311,64 @@ foldMaybe f (x:xs) b =
 -- only from stashed away *pre-translated* info about the traits and impls
 -- What this means is
 --    1. we look up the TraitRef from an impl using the tiPreTraitRef
---    2. 
+--    2. create an ATInfo for translating the RHS of type defs in this impl
+--        by using the current ATDict, and then extending it with 
+--        defs for local ATs in this impl
+--    3. try to translate all of the type defs in the impl, if that succeeds
+--        mark this impl as done (and extend growing ATDict with type defs)
+--    4. skip any impls that we cannot process
 implATDict :: (?mirLib :: Collection, HasCallStack, ?debug::Int) => Collection -> ATDict
-implATDict col = go (concat (Map.elems (col^.impls))) mempty where
+implATDict col = go 0 (concat (Map.elems (col^.impls))) mempty where
   full = ?mirLib <> col
 
   -- Try to process a TraitImpl, returning whether the processing was successful
   -- or whether we need to wait for other traitImpls to be processed first.
   addImpl :: TraitImpl -> ATDict -> Maybe ATDict
   addImpl ti done = case result of
-       Just m -> do
-         Just m
-       Nothing -> Nothing
+       [] ->
+         (Just m) 
+       _  ->
+         Nothing
     where 
-    result = foldr addImplItem (Just done) (ti^.tiItems)
+    (m, result) = foldMaybe addImplItem (ti^.tiItems) done
     TraitRef tn ss = ti^.tiPreTraitRef
 
     -- ATInfo for translating the RHS of TraitImplTypes
     -- This ATInfo needs to include ATs from the impl itself
-    atinfo = ATInfo start num (add full) (error "Only type components")
+    atinfo = ATInfo start num (add (full & adict .~ done)) (error "Only type components")
     add    = addLocalATs start atys        
     start  = toInteger (length (ti^.tiGenerics))
     num    = toInteger (length (ti^.tiAssocTys))
     atys   = ti^.tiAssocTys
     
-    addImplItem :: TraitImplItem -> Maybe ATDict -> Maybe ATDict
-    addImplItem tii@(TraitImplType _ ii ty) (Just m) = do
+    addImplItem :: TraitImplItem -> ATDict -> Maybe ATDict
+    addImplItem tii@(TraitImplType _ ii ty) m = 
       -- try to translate the RHS
-      ty' <- case abstractATs atinfo ty of
-                   Left s ->  Nothing
-                   Right v -> Just v
-      when (?debug > 3) $ do
-         traceM $ "adding " ++ fmt ii ++ fmt ss ++ " |-> " ++ fmt ty'
-         --traceM $ "traitRef is " ++ fmt (ti^.tiPreTraitRef)
-         --traceM $ "atys is " ++ fmt atys
-      Just $ insertATDict (ii,ss) ty' m where
-    addImplItem _ Nothing = Nothing
-    addImplItem _ m = m
+      case abstractATs atinfo ty of
+             Left s -> Nothing
+             Right ty' -> do
+               when (?debug > 7) $ do
+                 traceM $ "adding " ++ fmt ii ++ fmt ss ++ " |-> " ++ fmt ty' ++ " in impl: " ++ fmt (TraitRef tn ss)
+                 --traceM $ "traitRef is " ++ fmt (ti^.tiPreTraitRef)
+                 --traceM $ "atys is " ++ fmt atys
+               Just $ insertATDict (ii,ss) ty' m where
+    addImplItem _ m = Just m
   
-  go :: [TraitImpl] -> ATDict -> ATDict  
-  go tis done =
-    if null next
-       then this
-       else if length next == length tis then
+  go :: Int -> [TraitImpl] -> ATDict -> ATDict  
+  go i tis done =
+    trace ("*****Step " ++ show i ++ "\n")  $
+    let (next_done, next_tis) = foldMaybe addImpl tis done in
+    if null next_tis
+       then next_done
+       else if length next_tis == length tis then
               if (?debug > 1) then 
                   (trace $ "BUG in mkImplADict: not making progress during implATDict." ++
-                  "\nDropping remaining impls. " ++ fmt (map (^.tiTraitRef) tis)) this
+                  "\nDropping remaining impls. " ++ fmt (map (^.tiTraitRef) next_tis))
+                  next_done
               else
-               this
-            else go next step where
-
-    (this, next) = foldMaybe addImpl tis done
-
-    step = this
+                  next_done
+            else
+              (go (i+1) next_tis next_done) where
   
 
 -- Add entries to ATDict for the "FnOnce::Output" associated type
@@ -426,8 +452,6 @@ abstractATsE ati x = case abstractATs ati x of
 -- add associated types to the end of the current params, translate items and predicates
 translateTrait :: (HasCallStack,?debug::Int) => ATInfo -> Trait -> Trait
 translateTrait ati trait =
-  --trace ("Translating " ++ fmt (trait ^.traitName)
-  --       ++ "\n assocTys: " ++ fmt (trait ^.traitAssocTys))
   trait1
      where
        trait1 = trait & traitItems      %~ map updateMethod
@@ -461,13 +485,15 @@ translateImpl :: (HasCallStack,?debug::Int) => ATInfo -> TraitImpl -> TraitImpl
 translateImpl ati impl = newImpl
      where
        newImpl = impl & tiTraitRef    .~ newTraitRef
-                      & tiPreTraitRef .~ (TraitRef tn ss)
+                      & tiPreTraitRef .~ (TraitRef tn (Substs ss))
                       & tiGenerics    %~ (++ (map toParam atys))
                       & tiPredicates  %~ map (abstractATsE info)
                       & tiItems       %~ Maybe.mapMaybe translateImplItem
                       
-       TraitRef tn ss = impl^.tiTraitRef                             
-       newTraitRef = TraitRef tn (ss <> ss')
+       TraitRef tn (Substs ss) = impl^.tiTraitRef                             
+       newTraitRef = TraitRef tn (ss0 <> ss')
+
+       ss0    = Substs $ map (abstractATsE info) ss
        
        info   = ati & atStart .~ j
                     & atNum   .~ toInteger (length atys)
@@ -480,7 +506,7 @@ translateImpl ati impl = newImpl
        -- Update the TraitRef to include ATs
        -- If we don't have info about the trait, assume it has no ATs
        trATs = case (col^.traits) Map.!? tn of
-                       Just trait -> tySubst ss (trait^.traitAssocTys)
+                       Just trait -> tySubst ss0 (trait^.traitAssocTys)
                        Nothing    -> []
                        
        ss'  = case lookupATs info trATs of
@@ -488,13 +514,6 @@ translateImpl ati impl = newImpl
                 Right v -> v
        
        translateImplItem ti@(TraitImplMethod nm did) = Just $ (TraitImplMethod nm did)
-{-         ti & tiiGenerics   .~ newsig ^. fsgenerics
-            & tiiPredicates .~ newsig ^. fspredicates
-            & tiiSignature  .~ newsig
-           where
-             newsig :: Fang
-             newsig = abstractATsE info sig -}
-       -- TODO: remove?                                
        translateImplItem ti@(TraitImplType {})  = Nothing
 
        

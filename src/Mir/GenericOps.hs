@@ -325,16 +325,16 @@ abstractATs_Ty ati ty@(TyProjection d substs)
     | Just nty <- lookupATDict (ati^.atCol .adict) (d,substs)
     = return nty
     
-    -- try translating the substs
+    -- try translating the substs first, then do the lookup
     | otherwise = do
        substs' <- abstractATs ati substs
        case lookupATDict (ati^.atCol . adict) (d,substs') of
          Just nty -> return nty
          Nothing -> do
            throwError ("WARNING: " ++ fmt ty ++ " with unknown translation.\n"++
-                      case (ati^.atCol . traits) Map.!? d of
-                        Just tr -> "found trait " ++ fmt tr ++
-                          "\n with impls " ++ concat (map fmt (getImpls (ati^.atCol) (getTraitName d)))
+                      case (ati^.atCol . traits) Map.!? (getTraitName d) of
+                        Just tr -> "found trait " -- ++ fmt tr ++
+                          -- "\n with impls " -- ++ concat (map fmt (getImpls (ati^.atCol) (getTraitName d)))
                         Nothing ->
                           "cannot find trait " ++ fmt (getTraitName d) ++ " in collection.")
                       
@@ -436,7 +436,8 @@ addLocalATs k assocs col = foldl go col zips where
       Left err  -> trace ("WARNING in addLocalATs:" ++ err ++ "\ndid<ss> is " ++ fmt did ++ fmt ss) ss
       Right ss2 -> ss2
     
-  
+
+-- | Given a list of associated types, expand their projections  
 lookupATs :: (MonadError String m) => ATInfo -> [AssocTy] -> m Substs
 lookupATs ati ats =
   Substs <$> abstractATs ati (map (\(a,b) -> TyProjection a b) ats)
