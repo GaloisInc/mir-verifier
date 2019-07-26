@@ -455,17 +455,20 @@ data TraitRef
 
 data TraitImpl
     = TraitImpl { _tiName       :: DefId
-                -- name of the impl group 
+                -- ^ name of the impl group 
                 , _tiTraitRef   :: TraitRef
-                -- name of the trait and the type we are implementing it
+                -- ^ name of the trait and the type we are implementing it
                 , _tiPreTraitRef :: TraitRef
-                -- pre-AT translation trait ref
+                -- ^ pre-AT translation trait ref
                 , _tiGenerics   :: [Param]
                 , _tiPredicates :: [Predicate]
                 , _tiPrePreds   :: [Predicate]
+                -- ^ Predicates before AT translation
                 , _tiItems      :: [TraitImplItem]
                 , _tiPreItems   :: [TraitImplItem]
+                -- ^ Items before AT translation
                 , _tiAssocTys   :: [AssocTy]
+                -- ^ Associated types
                 }
     deriving (Show, Eq, Ord, Generic)
 data TraitImplItem
@@ -580,12 +583,6 @@ fromIntegerLit (I64 i)   = i
 fromIntegerLit (I128 i)  = i
 fromIntegerLit (Isize i) = i
 
-
-
--- | Access *all* of the params of the trait
---traitParamsWithAssocTys :: Trait -> [Param]
---traitParamsWithAssocTys trait =
---   trait^.traitParams ++ map toParam (trait^.traitAssocTys)
 
 
 

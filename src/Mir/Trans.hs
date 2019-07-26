@@ -217,6 +217,9 @@ transConstVal :: HasCallStack => Some C.TypeRepr -> M.ConstVal -> MirGenerator h
 transConstVal (Some (C.BVRepr w)) (M.ConstInt i) =
     return $ MirExp (C.BVRepr w) (S.app $ E.BVLit w (fromInteger (M.fromIntegerLit i)))
 transConstVal (Some (C.BoolRepr)) (M.ConstBool b) = return $ MirExp (C.BoolRepr) (S.litExpr b)
+transConstVal (Some (C.NatRepr)) (M.ConstInt i) | fromIntegerLit i < 0 =
+    mirFail $ "negative number for nat constant: " ++ show i
+
 transConstVal (Some (C.NatRepr)) (M.ConstInt i) =
     do let n = fromInteger (M.fromIntegerLit i)
        return $ MirExp C.NatRepr (S.app $ E.NatLit n)
@@ -1386,7 +1389,7 @@ doReturn tr = do
 -- 
 -- Some of these predicates will turn into additional (term) arguments, but only the call
 -- site knows which
-lookupFunction :: forall h s ret. HasCallStack => MethName -> Substs
+lookupFunction :: forall h s ret. (?debug::Int,HasCallStack) => MethName -> Substs
    -> MirGenerator h s ret (Maybe (MirExp s, FnSig))
 lookupFunction nm (Substs funsubst)
   | Some k <- peanoLength funsubst = do
@@ -1422,8 +1425,11 @@ lookupFunction nm (Substs funsubst)
                in
                   MirExp cty polyspec
              FalseRepr ->
-                error $ "BUG: invalid number of type args to : " ++ show fhandle
-                      ++ "\n" ++ show (ctxSizeP tyargs) ++ " not <= " ++ show fk
+                (if ?debug > 1 then
+                  trace ("BUG: invalid number of type args to : " ++ show fhandle
+                        ++ "\n" ++ show (ctxSizeP tyargs) ++ " not <= " ++ show fk)
+                else
+                  id) (MirExp ifret (error "ASSERT FALSE HERE"))
           Just Refl ->
             let polyfcn  = R.App $ E.PolyHandleLit fk fhandle
                 polyinst = R.App $ E.PolyInstantiate (C.PolyFnRepr fk fargctx fret) polyfcn tyargs
@@ -1522,7 +1528,7 @@ lookupFunction nm (Substs funsubst)
 
 
 -- | Make a dictionary for a function call for the specified predicates
-mkDict :: (Var, Predicate) -> MirGenerator h s ret (MirExp s)
+mkDict :: (?debug::Int) => (Var, Predicate) -> MirGenerator h s ret (MirExp s)
 mkDict (var, pred@(TraitPredicate tn (Substs ss))) = do
   db <- use debugLevel
   vm <- use varMap
@@ -1591,7 +1597,7 @@ callExp :: HasCallStack =>
         -> MirGenerator h s ret (MirExp s)
 callExp funid funsubst cargs = do
    db    <- use debugLevel
-   mhand <- lookupFunction funid funsubst
+   mhand <- let ?debug = db in lookupFunction funid funsubst
    isCustom <- resolveCustom funid funsubst
    case () of
      () | Just (CustomOp op) <- isCustom -> do
@@ -1620,7 +1626,8 @@ callExp funid funsubst cargs = do
 
           exps <- mapM evalOperand cargs
           let preds = sig^.fspredicates
-          dexps <- mapM mkDict (Maybe.mapMaybe (\x -> (,x) <$> (dictVar x)) preds)
+          dexps <- mapM (let ?debug=db in mkDict)
+                     (Maybe.mapMaybe (\x -> (,x) <$> (dictVar x)) preds)
           exp_to_assgn (exps ++ dexps) $ \ctx asgn -> do
             case (testEquality ctx ifargctx) of
               Just Refl -> do

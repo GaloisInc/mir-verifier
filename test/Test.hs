@@ -63,6 +63,9 @@ expectedFail fn =
   where failMarker = "// FAIL: "
 
 
+-- | The first argument is a partially translated standard library
+-- passed in so that each test case doesn't have to translate it over and over.
+
 runCrux :: Mir.CachedStdLib -> FilePath -> Handle -> IO ()
 runCrux cachedLib rustFile outHandle = do
     -- goalTimeout is bumped from 60 to 120 because scalar.rs symbolic
@@ -70,8 +73,9 @@ runCrux cachedLib rustFile outHandle = do
     let options = (CruxOpts.defaultCruxOptions { CruxOpts.inputFile = rustFile,
                                                  CruxOpts.simVerbose = 0,
                                                  CruxOpts.goalTimeout = 120 } ,
-                   Mir.defaultMirOptions { Mir.cachedStdLib = Just cachedLib
-                                         , Mir.assertFalse = True -- replace translation errors with "assert false"
+                   Mir.defaultMirOptions { Mir.cachedStdLib = Nothing -- Just cachedLib
+                                         , Mir.assertFalse = True
+                                         -- try to ignore translation errors
                                          , Mir.useStdLib = True } )
     let ?outputConfig = Crux.OutputConfig False outHandle outHandle
     Crux.check options
