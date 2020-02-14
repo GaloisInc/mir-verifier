@@ -1,10 +1,13 @@
 #![no_std]
 #![feature(core_intrinsics)]
 #![feature(crucible_intrinsics)]
+#![feature(fn_traits)]
+#![feature(unboxed_closures)]
 
 pub use core::crucible::any;
 pub mod array;
 pub mod bitvector;
+pub mod closure;
 pub mod stack_guard;
 pub mod symbolic;
 pub mod sym_bytes;

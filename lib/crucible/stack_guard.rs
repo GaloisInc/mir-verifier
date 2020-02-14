@@ -17,31 +17,25 @@
 //! it can only result in mutations happening at surprising times.
 
 use core::mem;
-use crate::any::Any;
+use crate::closure::BoxFn;
 
 
-pub struct StackGuard {
-    code: fn(Any),
-    data: Any,
-}
-
-fn invoke<F: FnOnce()>(any: Any) {
-    let f = unsafe { any.downcast::<F>() };
-    f();
-}
+pub struct StackGuard(BoxFn<(), ()>);
 
 impl StackGuard {
     pub fn new<F: FnOnce()>(f: F) -> StackGuard {
         // Make sure `stack_guard_cleanup` is included in any crate that uses `StackGuard::new`.
         let _require_cleanup = stack_guard_cleanup;
-        StackGuard {
-            code: invoke::<F>,
-            data: unsafe { Any::new_unchecked(f) },
-        }
+        StackGuard(BoxFn::new(f))
     }
 
     pub fn cleanup(self) {
-        (self.code)(self.data);
+        // `&T` and `T` have the same representation.  We use this to work around the restriction
+        // on moving out of a type that implements `Drop`.
+        let f = unsafe {
+            mem::crucible_identity_transmute::<&BoxFn<(), ()>, BoxFn<(), ()>>(&self.0)
+        };
+        f();
         // Avoid dropping `self` at the end of the function, to avoid infinite recursion via
         // `TerminatorKind::Drop` / `stack_guard_cleanup`.
         mem::forget(self);
