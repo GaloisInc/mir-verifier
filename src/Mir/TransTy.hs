@@ -134,6 +134,9 @@ optionDiscrNone = 0
 optionDiscrSome :: Int
 optionDiscrSome = 1
 
+pattern CTyStackGuard <- M.TyAdt _ $(M.normDefIdPat "crucible::stack_guard::StackGuard") (M.Substs [])
+  where CTyStackGuard = M.TyAdt (M.textId "type::adt") (M.textId "crucible::stack_guard::StackGuard") (M.Substs [])
+
 
 tyToRepr :: TransTyConstraint => M.Ty -> Some C.TypeRepr
 tyToRepr t0 = case t0 of

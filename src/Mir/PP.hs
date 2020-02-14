@@ -224,7 +224,7 @@ instance Pretty Terminator where
     pretty Abort = text "abort;"
     pretty Resume = text "resume;"
     pretty Unreachable = text "unreachable;"
-    pretty (Drop _l _target _unwind) = text "drop;"
+    pretty (Drop l target _unwind) = text "drop" <+> pretty l <+> text "->" <+> pretty target <> semi
     pretty DropAndReplace{} = text "dropreplace;"
     pretty (Call f args (Just (lv,bb0)) bb1) =
       text "call" <> tupled ([pretty lv <+> text "="

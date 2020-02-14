@@ -1536,8 +1536,11 @@ transTerminator (M.Assert cond _expected _msg target _cleanup) _ = do
     jumpToBlock target -- FIXME! asserts are ignored; is this the right thing to do? NO!
 transTerminator (M.Resume) tr =
     doReturn tr -- resume happens when unwinding
-transTerminator (M.Drop _dl dt _dunwind) _ =
-    jumpToBlock dt -- FIXME! drop: just keep going
+transTerminator (M.Drop dl dt _dunwind) _
+  | CTyStackGuard <- typeOf dl = do
+    _ <- callExp (M.textId "crucible::stack_guard::stack_guard_cleanup") (Substs []) [Move dl]
+    jumpToBlock dt
+  | otherwise = jumpToBlock dt -- FIXME! drop: just keep going
 transTerminator M.Abort tr =
     G.reportError (S.litExpr "process abort in unwinding")
 transTerminator M.Unreachable tr =

@@ -7,7 +7,15 @@ impl Any {
     /// Wrap an arbitrary value in `Any`.
     #[unstable(feature = "crucible_intrinsics", issue = "0")]
     pub fn new<T: Copy>(x: T) -> Any {
-        unimplemented!()
+        unsafe { Self::new_unchecked(x) }
+    }
+
+    /// Wrap an arbitrary value in `Any` without requiring `Copy`.  If `T` is not `Copy`, then the
+    /// caller must ensure that the `Any` value is only `downcast` once - otherwise, `x` may be
+    /// copied despite not supporting it.
+    #[unstable(feature = "crucible_intrinsics", issue = "0")]
+    pub unsafe fn new_unchecked<T>(x: T) -> Any {
+        unimplemented!("Any::new_unchecked")
     }
 
     /// Try to downcast to concrete type `T`.  This succeeds if the type passed to `new` has the
@@ -19,7 +27,7 @@ impl Any {
     /// `crucible_identity_transmute`.
     #[unstable(feature = "crucible_intrinsics", issue = "0")]
     pub unsafe fn downcast<T>(self) -> T {
-        unimplemented!()
+        unimplemented!("Any::downcast")
     }
 }
 

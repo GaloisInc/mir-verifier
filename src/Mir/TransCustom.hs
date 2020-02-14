@@ -125,7 +125,7 @@ customOpDefs = Map.fromList $ [
                          , array_as_slice
                          , array_as_mut_slice
 
-                         , any_new
+                         , any_new_unchecked
                          , any_downcast
 
                          , exit
@@ -410,12 +410,12 @@ array_as_mut_slice = ( ["crucible","array","{{impl}}", "as_mut_slice"], ) $ \sub
 
 -- Methods for crucible::any::Any (which has custom representation)
 
-any_new :: (ExplodedDefId, CustomRHS)
-any_new = ( ["core", "crucible", "any", "{{impl}}", "new"], \substs -> case substs of
+any_new_unchecked :: (ExplodedDefId, CustomRHS)
+any_new_unchecked = ( ["core", "crucible", "any", "{{impl}}", "new_unchecked"], \substs -> case substs of
     Substs [_] -> Just $ CustomOp $ \_ ops -> case ops of
         [MirExp tpr e] -> do
             return $ MirExp C.AnyRepr $ R.App $ E.PackAny tpr e
-        _ -> mirFail $ "bad arguments for Any::new: " ++ show ops
+        _ -> mirFail $ "bad arguments for Any::new_unchecked: " ++ show ops
     _ -> Nothing
     )
 
