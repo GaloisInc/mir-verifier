@@ -88,15 +88,67 @@ Files that are not yet expected to work correctly begin with `// FAIL: ` and
 a brief comment describing the reason for the expected failure.
 
 
-## Limitations
+## Language and Library Support
 
-`crux-mir` does not support reasoning about unsafe code.  Many functions in
-the standard library rely on unsafe code; we have reimplemented some of these
-in terms of safe code or custom `crux-mir` intrinsics, but many unsupported
-functions still remain.  Test cases that call into unsafe code will produce
-assertion failures with messages like `don't know how to call
-core::intrinsics::transmute` or `expected reference type in dereference
-TyRawPtr`.
+`crux-mir` currently supports most safe Rust language features and supports a
+significant subset of the Rust standard library.
 
-Currently, `crux-mir` also has trouble supporting references and function
-pointers in constant expressions and static initializers.
+Currently supported:
+
+ * Basic functionality: structs, enums, functions, pattern matching, and other
+   control flow.
+ * Common collections: slices, `Vec`, `str`, and `String` all generally work.
+   However, some less-common methods on these types may not be supported yet.
+ * Generics, traits, associated types, and specialization.
+ * Closures.  However, certain conversions are unsupported: `crux-mir` cannot
+   yet handle converting a closure to a function pointer or converting a
+   `FnOnce` closure to `Fn` or `FnMut`.
+ * Iterators and iterator adapters.  (This is just a side effect of support for
+   generics and closures.)
+ * Heap allocation with `Box`.
+
+Partially supported:
+
+ * Trait objects.  `&dyn Trait` and `&mut dyn Trait` types mostly work;
+   `Box<dyn Trait>` and `Rc<dyn Trait>` are not yet supported.
+ * Raw pointers.  Converting a reference to a raw pointer and back is
+   supported.  Pointer arithmetic is supported only within arrays.  Pointer
+   comparison with `==` is supported (useful for writing iterators).
+   Integer-to-pointer casts are supported, but pointer-to-integer and
+   pointer-to-pointer casts (except unsizing casts) are not.
+ * Dynamically-sized types (DSTs).  Array-to-slice unsizing is supported,
+   including via `CoerceUnsized` (so converting `Box<[T; 3]>` to `Box<[T]>`
+   works).  Unsizing to a trait object works only for `&` and `&mut`.  Custom
+   DST structs (that is, structs that have a dynamically-sized type as the last
+   field) are not supported.
+
+Not supported:
+
+ * Running destructors (`Drop`).  Currently all variables are leaked (as with
+   `mem::forget`) when going out of scope.
+ * Multithreading.  `Arc`, atomics, `Mutex`, and `RwLock` are all unsupported.
+ * `transmute` and equivalents.  In general, `crux-mir` does not yet support
+   reinterpreting the bytes of a value of type `T` as a value of type `U`.
+   This means `mem::transmute`, casts from `*const T` to `*const U`, and
+   unions are all unsupported.
+ * Calls to `extern` functions.
+ * I/O functions.
+
+
+## Built-in Checks
+
+`crux-mir` automatically performs the following checks on each test case, even
+in the absence of an explicit `crucible_assert!`:
+
+ * No `panic!`s.  This includes checking for failing `assert!`s, since
+   `assert!` calls `panic!` on failure.
+ * No integer overflow, except when explicitly permitted via `wrapping_add` and
+   similar methods.
+ * No out-of-bounds array accesses.  This includes both Rust's normal bound
+   checks (which `panic!` on failure) and also unchecked accesses through raw
+   pointers.
+ * No dereference of null or dangling pointers.  (Specifically, no dereference
+   of pointers created by integer-to-pointer cast.)
+
+`crux-mir` does not yet check for use-after-free in unsafe code.
+
