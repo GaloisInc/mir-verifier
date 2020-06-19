@@ -14,19 +14,20 @@
 module Mir.Language (main, mainWithOutputTo, mainWithOutputConfig, runTests,
                      MIROptions(..), defaultMirOptions) where
 
-import qualified Data.Char       as Char
-import           Data.Functor.Const (Const(..))
+import           Control.Lens ((^.), (^?), (^..), ix, each)
 import           Control.Monad
 import           Control.Monad.IO.Class
+import qualified Data.BitVector.Sized as BV
+import qualified Data.Char       as Char
+import           Data.Functor.Const (Const(..))
 import qualified Data.List       as List
-import           Data.Text (Text)
-import qualified Data.Text       as Text
-import           Data.Type.Equality ((:~:)(..),TestEquality(..))
 import qualified Data.Map.Strict as Map
 import           Data.Maybe (fromMaybe)
 import qualified Data.Sequence   as Seq
+import qualified Data.Text       as Text
+import           Data.Text (Text)
+import           Data.Type.Equality ((:~:)(..),TestEquality(..))
 import qualified Data.Vector     as Vector
-import           Control.Lens ((^.), (^?), (^..), ix, each)
 
 import System.Console.ANSI
 import           System.IO (Handle)
@@ -60,7 +61,6 @@ import qualified What4.FunctionName                    as W4
 import qualified Crux as Crux
 import qualified Crux.Model as Crux
 
-import Crux.Goal (countProvedGoals, countDisprovedGoals, countTotalGoals)
 import Crux.Types
 import Crux.Log
 
@@ -215,9 +215,9 @@ runTests (cruxOpts, mirOpts) = do
           | proved == tot = output "ok"
           | otherwise = output "UNKNOWN"
           where
-            tot = sum (fmap countTotalGoals gls)
-            proved = sum (fmap countProvedGoals gls)
-            disproved = sum (fmap countDisprovedGoals gls)
+            tot = sum (totalProcessedGoals . fst <$> gls)
+            proved = sum (provedGoals . fst <$> gls)
+            disproved = sum (disprovedGoals . fst <$> gls)
 
     results <- forM testNames $ \fnName -> do
         res <- Crux.runSimulator cruxOpts $ simCallback fnName
@@ -230,7 +230,7 @@ runTests (cruxOpts, mirOpts) = do
     -- Print counterexamples
     let isResultOK (CruxSimulationResult comp gls) =
             comp == ProgramComplete &&
-            sum (fmap countProvedGoals gls) == sum (fmap countTotalGoals gls)
+            sum (provedGoals . fst <$> gls) == sum (totalProcessedGoals . fst <$> gls)
     let anyFailed = any (not . isResultOK) results
 
     let printCounterexamples gs = case gs of
@@ -252,7 +252,7 @@ runTests (cruxOpts, mirOpts) = do
             when (not $ isResultOK res) $ do
                 outputLn ""
                 outputLn $ "---- " ++ show fnName ++ " counterexamples ----"
-                mapM_ printCounterexamples $ cruxSimResultGoals res
+                mapM_ (printCounterexamples . snd) $ cruxSimResultGoals res
 
     -- Print final tally of proved/disproved goals (except if
     -- --print-result-only is set)
@@ -363,7 +363,7 @@ showRegEntry col mty (C.RegEntry tp rv) =
                      Just s -> show s
                      Nothing -> "Symbolic string"
 
-    (TyChar, C.BVRepr _w) -> return $ case W4.asUnsignedBV rv of
+    (TyChar, C.BVRepr _w) -> return $ case BV.asUnsigned <$> W4.asBV rv of
                      Just i  -> show (Char.chr (fromInteger i))
                      Nothing -> "Symbolic char"
     (TyInt USize, C.NatRepr) -> return $ case W4.asNat rv of
@@ -372,10 +372,10 @@ showRegEntry col mty (C.RegEntry tp rv) =
     (TyUint USize, C.NatRepr) -> return $ case W4.asNat rv of
                      Just n -> show n
                      Nothing -> "Symbolic nat"
-    (TyInt _sz, C.BVRepr _w) -> return $ case W4.asSignedBV rv of
+    (TyInt _sz, C.BVRepr w) -> return $ case BV.asSigned w <$> W4.asBV rv of
                      Just i  -> show i
                      Nothing -> "Symbolic BV"
-    (TyUint _sz, C.BVRepr _w) -> return $ case W4.asUnsignedBV rv of
+    (TyUint _sz, C.BVRepr _w) -> return $ case BV.asUnsigned <$> W4.asBV rv of
                      Just i  -> show i
                      Nothing -> "Symbolic BV"
     (TyFloat _,  C.RealValRepr) -> return $ case W4.asRational rv of

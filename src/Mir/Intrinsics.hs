@@ -52,21 +52,22 @@ module Mir.Intrinsics
 , mirExtImpl
 ) -} where
 
-import           GHC.Natural
-import           GHC.TypeLits
 import           Control.Lens hiding (Empty, (:>), Index, view)
 import           Control.Monad
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.Maybe
+import qualified Data.BitVector.Sized as BV
 import           Data.Kind(Type)
 import qualified Data.List as List
-import qualified Data.Maybe as Maybe
-import           Data.Map.Strict(Map)
 import qualified Data.Map.Strict as Map
+import           Data.Map.Strict(Map)
+import qualified Data.Maybe as Maybe
+import           Data.String
 import           Data.Text (Text)
 import qualified Data.Text as Text
-import           Data.String
 import qualified Data.Vector as V
+import           GHC.Natural
+import           GHC.TypeLits
 
 import qualified Text.Regex as Regex
 import           Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
@@ -81,7 +82,6 @@ import qualified Data.Parameterized.NatRepr as N
 
 import           Lang.Crucible.Backend
 import           Lang.Crucible.CFG.Expr
-import           Lang.Crucible.CFG.Extension.Safety(AssertionClassifier,NoAssertionClassifier,HasStructuredAssertions(..))
 import           Lang.Crucible.CFG.Generator hiding (dropRef)
 import           Lang.Crucible.FunctionHandle
 import           Lang.Crucible.Syntax
@@ -165,7 +165,7 @@ pattern BaseIsizeRepr <- BaseBVRepr (testEquality (knownRepr :: N.NatRepr SizeBi
 
 
 usizeLit :: Integer -> App ext f UsizeType
-usizeLit = BVLit knownRepr
+usizeLit = BVLit knownRepr . BV.mkBV knownNat
 
 usizeAdd :: f UsizeType -> f UsizeType -> App ext f UsizeType
 usizeAdd = BVAdd knownRepr
@@ -256,7 +256,7 @@ vectorSizeUsize wrap vec = natToUsize wrap $ wrap $ VectorSize vec
 
 
 isizeLit :: Integer -> App ext f IsizeType
-isizeLit = BVLit knownRepr
+isizeLit = BVLit knownRepr . BV.mkBV knownNat
 
 isizeAdd :: f IsizeType -> f IsizeType -> App ext f IsizeType
 isizeAdd = BVAdd knownRepr
@@ -681,7 +681,6 @@ writeMirVectorWithSymIndex sym _ (MirVector_Array a) i val = do
 data MIR
 type instance ExprExtension MIR = EmptyExprExtension
 type instance StmtExtension MIR = MirStmt
-type instance AssertionClassifier MIR = NoAssertionClassifier
 
 -- First `Any` is the data pointer - either an immutable or mutable reference.
 -- Second `Any` is the vtable.
@@ -960,11 +959,6 @@ instance TraversableFC MirStmt where
   traverseFC = traverseMirStmt
 
 
-instance HasStructuredAssertions MIR where
-  explain _       = \case
-  toPredicate _ _ = \case
-      
-
 instance IsSyntaxExtension MIR
 
 readBeforeWriteMsg :: SimErrorReason
@@ -1165,14 +1159,14 @@ mirRef_offsetWrapIO sym _tpr (MirReference root (Index_RefPath tpr path idx)) of
     idx' <- bvAdd sym idx offset
     return $ MirReference root $ Index_RefPath tpr path idx'
 mirRef_offsetWrapIO sym _ ref@(MirReference _ _) offset = do
-    isZero <- bvEq sym offset =<< bvLit sym knownNat 0
+    isZero <- bvEq sym offset =<< bvLit sym knownNat (BV.mkBV knownNat 0)
     assert sym isZero $ Unsupported $
         "pointer arithmetic outside arrays is not yet implemented"
     return ref
 mirRef_offsetWrapIO sym _ ref@(MirReference_Integer _ _) offset = do
     -- Offsetting by zero is a no-op, and is always allowed, even on invalid
     -- pointers.  In particular, this permits `(&[])[0..]`.
-    isZero <- bvEq sym offset =<< bvLit sym knownNat 0
+    isZero <- bvEq sym offset =<< bvLit sym knownNat (BV.mkBV knownNat 0)
     assert sym isZero $ Unsupported $
         "cannot perform pointer arithmetic on invalid pointer"
     return ref
@@ -1191,7 +1185,7 @@ mirRef_tryOffsetFromIO sym (MirReference root1 path1) (MirReference root2 path2)
         _ -> do
             pathEq <- refPathEq sym path1 path2
             similar <- andPred sym rootEq pathEq
-            mkPE similar <$> bvLit sym knownNat 0
+            mkPE similar <$> bvLit sym knownNat (BV.mkBV knownNat 0)
 mirRef_tryOffsetFromIO _ _ _ = do
     -- MirReference_Integer pointers are always disjoint from all MirReference
     -- pointers, so we report them as being in different objects.
@@ -1290,12 +1284,12 @@ execMirStmt stmt s =
             Nothing -> addFailedAssertion sym $
                 GenericSimError "VectorDrop index must be concrete"
        ArrayZeroed idxs w -> do
-            zero <- bvLit sym w 0
+            zero <- bvLit sym w (BV.mkBV w 0)
             val <- constantArray sym idxs zero
             return (val, s)
 
        MirVector_Uninit _tp (regValue -> lenSym) -> do
-            len <- case asUnsignedBV lenSym of
+            len <- case BV.asUnsigned <$> asBV lenSym of
                 Just x -> return x
                 Nothing -> addFailedAssertion sym $ Unsupported $
                     "Attempted to allocate vector of symbolic length"
@@ -1306,7 +1300,7 @@ execMirStmt stmt s =
        MirVector_FromArray _tp (regValue -> a) ->
             return (MirVector_Array a, s)
        MirVector_Resize _tpr (regValue -> mirVec) (regValue -> newLenSym) -> do
-            newLen <- case asUnsignedBV newLenSym of
+            newLen <- case BV.asUnsigned <$> asBV newLenSym of
                 Just x -> return x
                 Nothing -> addFailedAssertion sym $ Unsupported $
                     "Attempted to resize vector to symbolic length"

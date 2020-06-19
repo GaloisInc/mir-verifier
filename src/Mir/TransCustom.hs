@@ -23,12 +23,13 @@
 
 module Mir.TransCustom(customOps) where
 
+import qualified Data.BitVector.Sized as BV
 import Data.Bits (shift)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import qualified Data.Maybe as Maybe
-import qualified Data.String as String
 import           Data.String (fromString)
+import qualified Data.String as String
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Vector as V
@@ -718,9 +719,9 @@ saturatingResultBV w satValue value over = return $ MirExp (C.BVRepr w) $
     R.App $ E.BVIte over w satValue value
 
 saturateValueUnsigned :: (1 <= w) => NatRepr w -> BinOp -> Maybe (R.Expr MIR s (C.BVType w))
-saturateValueUnsigned w Add = Just $ R.App $ E.BVLit w (shift 1 (fromInteger $ C.intValue w) - 1)
-saturateValueUnsigned w Sub = Just $ R.App $ E.BVLit w 0
-saturateValueUnsigned w Mul = Just $ R.App $ E.BVLit w (shift 1 (fromInteger $ C.intValue w) - 1)
+saturateValueUnsigned w Add = Just $ R.App $ E.BVLit w (BV.mkBV w (shift 1 (fromInteger $ C.intValue w) - 1))
+saturateValueUnsigned w Sub = Just $ R.App $ E.BVLit w (BV.mkBV w 0)
+saturateValueUnsigned w Mul = Just $ R.App $ E.BVLit w (BV.mkBV w (shift 1 (fromInteger $ C.intValue w) - 1))
 saturateValueUnsigned w _ = Nothing
 
 saturateValueSigned :: (1 <= w) => NatRepr w -> BinOp -> R.Expr MIR s C.BoolType -> Maybe (R.Expr MIR s (C.BVType w))
@@ -730,8 +731,8 @@ saturateValueSigned w op pos = case op of
     _ -> Nothing
   where
     bits = fromIntegral $ C.intValue w
-    maxVal = R.App $ E.BVLit w ((1 `shift` (bits - 1)) - 1)
-    minVal = R.App $ E.BVLit w (negate $ 1 `shift` (bits - 1))
+    maxVal = R.App $ E.BVLit w (BV.mkBV w ((1 `shift` (bits - 1)) - 1))
+    minVal = R.App $ E.BVLit w (BV.mkBV w (negate $ 1 `shift` (bits - 1)))
 
 makeSaturatingArith :: String -> BinOp -> CustomRHS
 makeSaturatingArith name bop =
@@ -760,7 +761,7 @@ makeSaturatingArith name bop =
         _ -> mirFail $ "bad arguments to " ++ name ++ ": " ++ show (opTys, ops)
   where
     isPos :: MirExp s -> MirGenerator h s ret (R.Expr MIR s C.BoolType)
-    isPos (MirExp (C.BVRepr w) e) = return $ R.App $ E.BVSle w (R.App $ E.BVLit w 0) e
+    isPos (MirExp (C.BVRepr w) e) = return $ R.App $ E.BVSle w (R.App $ E.BVLit w (BV.mkBV w 0)) e
     isPos (MirExp tpr _) = mirFail $ name ++ ": expected BVRepr, but got " ++ show tpr
 
 
@@ -810,14 +811,14 @@ ctlz_impl name optFixedWidth _substs = Just $ CustomOp $ \_optys ops -> case ops
         ZeroNat ->
             -- Bits 0..w are all known to be zero.  There are `w` leading
             -- zeros.
-            E.BVLit w' $ intValue w
+            E.BVLit w' $ BV.mkBV w' (intValue w)
         NonZeroNat
           | i' <- predNat i
           , LeqProof <- addIsLeq i' (knownNat @1)
           , LeqProof <- leqTrans (leqProof i' i) (leqProof i w)
           -- Bits i..w are known to be zero, so inspect bit `i-1` next.
           -> E.BVIte (R.App $ getBit w i' bv) w'
-                (R.App $ E.BVLit w' $ intValue w - intValue i)
+                (R.App $ E.BVLit w' $ BV.mkBV w' (intValue w - intValue i))
                 (R.App $ buildMux w i' w' bv)
 
 ctlz :: (ExplodedDefId, CustomRHS)
@@ -850,7 +851,7 @@ type_id ::  (ExplodedDefId, CustomRHS)
 type_id = (["core","intrinsics", "", "type_id"],
   \ _substs -> Just $ CustomOp $ \ opTys ops ->
     -- TODO: keep a map from Ty to Word64, assigning IDs on first use of each type
-    return $ MirExp knownRepr $ R.App (E.BVLit (knownRepr :: NatRepr 64) 0))
+    return $ MirExp knownRepr $ R.App (E.BVLit (knownRepr :: NatRepr 64) (BV.mkBV knownNat 0)))
 
 size_of :: (ExplodedDefId, CustomRHS)
 size_of = (["core", "intrinsics", "", "size_of"], \substs -> case substs of
@@ -1179,9 +1180,9 @@ bv_funcs =
     , bv_overflowing_binop "sub" Sub
     , bv_eq
     , bv_lt
-    , bv_literal "ZERO" (\w -> E.BVLit w 0)
-    , bv_literal "ONE" (\w -> E.BVLit w 1)
-    , bv_literal "MAX" (\w -> E.BVLit w $ (1 `shift` fromIntegral (intValue w)) - 1)
+    , bv_literal "ZERO" (\w -> E.BVLit w (BV.mkBV w 0))
+    , bv_literal "ONE" (\w -> E.BVLit w (BV.mkBV w 1))
+    , bv_literal "MAX" (\w -> E.BVLit w $ BV.mkBV w ((1 `shift` fromIntegral (intValue w)) - 1))
     , bv_leading_zeros
     ]
 

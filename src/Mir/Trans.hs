@@ -45,6 +45,7 @@ import Control.Monad.ST
 import Control.Lens hiding (op,(|>))
 import Data.Foldable
 
+import qualified Data.BitVector.Sized as BV
 import Data.Bits (shift)
 import qualified Data.ByteString as BS
 import qualified Data.Char as Char
@@ -55,10 +56,10 @@ import qualified Data.Maybe as Maybe
 import Data.Semigroup(Semigroup(..))
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.String (fromString)
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified Data.Vector as V
-import Data.String (fromString)
 import Numeric
 import Numeric.Natural()
 
@@ -158,7 +159,7 @@ setPosition = G.setPosition . parsePosition
 -- ** Expressions
 
 u8ToBV8 :: ConstVal -> R.Expr MIR s (C.BVType 8)
-u8ToBV8 (ConstInt (U8 c)) = R.App (E.BVLit knownRepr c)
+u8ToBV8 (ConstInt (U8 c)) = R.App (E.BVLit knownRepr (BV.mkBV knownNat c))
 u8ToBV8 _ = error $ "BUG: array literals should only contain bytes (u8)"
 -- Expressions: variables and constants
 --
@@ -170,9 +171,9 @@ transConstVal (CTyBv _) (Some (C.BVRepr w)) (M.ConstStruct [M.ConstInt i, M.Cons
         1 -> return 1   -- Bv::ONE
         2 -> return $ (1 `shift` fromIntegral (intValue w)) - 1    -- Bv::MAX
         i' -> mirFail $ "unknown bitvector constant " ++ show i'
-    return $ MirExp (C.BVRepr w) (S.app $ E.BVLit w val)
+    return $ MirExp (C.BVRepr w) (S.app $ E.BVLit w (BV.mkBV w val))
 transConstVal _ty (Some (C.BVRepr w)) (M.ConstInt i) =
-    return $ MirExp (C.BVRepr w) (S.app $ E.BVLit w (fromInteger (M.fromIntegerLit i)))
+    return $ MirExp (C.BVRepr w) (S.app $ E.BVLit w (BV.mkBV w (fromInteger (M.fromIntegerLit i))))
 transConstVal _ty (Some (C.BoolRepr)) (M.ConstBool b) = return $ MirExp (C.BoolRepr) (S.litExpr b)
 transConstVal _ty (Some (UsizeRepr)) (M.ConstInt i) =
     do let n = fromInteger (M.fromIntegerLit i)
@@ -182,7 +183,7 @@ transConstVal _ty (Some (IsizeRepr)) (ConstInt i) =
 transConstVal _ty (Some (MirSliceRepr (C.BVRepr w))) (M.ConstStr bs)
   | Just Refl <- testEquality w (knownNat @8) = do
     let u8Repr = C.BVRepr $ knownNat @8
-    let bytes = map (\b -> R.App (E.BVLit (knownNat @8) (toInteger b))) (BS.unpack bs)
+    let bytes = map (\b -> R.App (E.BVLit (knownNat @8) (BV.mkBV (knownNat @8) (toInteger b)))) (BS.unpack bs)
     let vec = R.App $ E.VectorLit u8Repr (V.fromList bytes)
     mirVec <- mirVector_fromVector u8Repr vec
     vecRef <- constMirRef (MirVectorRepr u8Repr) mirVec
@@ -198,7 +199,7 @@ transConstVal _ty (Some (MirVectorRepr w)) (M.ConstArray arr)
            MirExp (MirVectorRepr w) <$> mirVector_fromVector w (R.App $ E.VectorLit w bytes)
 transConstVal _ty (Some (C.BVRepr w)) (M.ConstChar c) =
     do let i = toInteger (Char.ord c)
-       return $ MirExp (C.BVRepr w) (S.app $ E.BVLit w i)
+       return $ MirExp (C.BVRepr w) (S.app $ E.BVLit w (BV.mkBV w i))
 transConstVal _ty (Some C.UnitRepr) (M.ConstFunction _did _substs) =
     return $ MirExp C.UnitRepr $ S.app E.EmptyApp
 
@@ -522,7 +523,7 @@ evalBinOp bop mat me1 me2 =
     shiftOverflowBV :: (1 <= w') =>
         NatRepr w -> NatRepr w' -> R.Expr MIR s (C.BVType w') -> R.Expr MIR s C.BoolType
     shiftOverflowBV w w' e =
-        let wLit = S.app $ E.BVLit w' $ intValue w
+        let wLit = S.app $ E.BVLit w' $ (BV.mkBV w' (intValue w))
         in S.app $ E.Not $ S.app $ E.BVUlt w' e wLit
 
 
@@ -573,7 +574,7 @@ transUnaryOp uop op = do
     case (uop, mop) of
       (M.Not, MirExp C.BoolRepr e) -> return $ MirExp C.BoolRepr $ S.app $ E.Not e
       (M.Not, MirExp (C.BVRepr n) e) -> return $ MirExp (C.BVRepr n) $ S.app $ E.BVNot n e
-      (M.Neg, MirExp (C.BVRepr n) e) -> return $ MirExp (C.BVRepr n) (S.app $ E.BVSub n (S.app $ E.BVLit n 0) e)
+      (M.Neg, MirExp (C.BVRepr n) e) -> return $ MirExp (C.BVRepr n) (S.app $ E.BVSub n (S.app $ E.BVLit n (BV.mkBV n 0)) e)
       (M.Neg, MirExp C.IntegerRepr e) -> return $ MirExp C.IntegerRepr $ S.app $ E.IntNeg e
       (M.Neg, MirExp C.RealValRepr e) -> return $ MirExp C.RealValRepr $ S.app $ E.RealNeg e
       (_ , MirExp ty e) -> mirFail $ "Unimplemented unary op `" ++ fmt uop ++ "' for " ++ show ty
@@ -687,11 +688,11 @@ evalCast' ck ty1 e ty2  =
       (M.Misc, TyBool, TyUint bsz)
        | MirExp C.BoolRepr e0 <- e
        -> baseSizeToNatCont bsz $ \w -> 
-           return $ MirExp (C.BVRepr w) (R.App $ E.BVIte e0 w (R.App $ E.BVLit w 1) (R.App $ E.BVLit w 0))
+           return $ MirExp (C.BVRepr w) (R.App $ E.BVIte e0 w (R.App $ E.BVLit w (BV.mkBV w 1)) (R.App $ E.BVLit w (BV.mkBV w 0)))
       (M.Misc, TyBool, TyInt bsz)
        | MirExp C.BoolRepr e0 <- e
        -> baseSizeToNatCont bsz $ \w -> 
-           return $ MirExp (C.BVRepr w) (R.App $ E.BVIte e0 w (R.App $ E.BVLit w 1) (R.App $ E.BVLit w 0))
+           return $ MirExp (C.BVRepr w) (R.App $ E.BVIte e0 w (R.App $ E.BVLit w (BV.mkBV w 1)) (R.App $ E.BVLit w (BV.mkBV w 0)))
 
       -- char to uint
       (M.Misc, M.TyChar, M.TyUint  M.USize)
@@ -1180,7 +1181,7 @@ doBVBranch w _ _ [i] = do
       Just lab -> G.jump lab
       _ -> mirFail "bad jump"
 doBVBranch w e (v:vs) (i:is) = do
-    let test = S.app $ E.BVEq w e $ S.app $ E.BVLit w v
+    let test = S.app $ E.BVEq w e $ S.app $ E.BVLit w (BV.mkBV w v)
     ifteAny test (jumpToBlock i) (doBVBranch w e vs is)
 doBVBranch _ _ _ _ =
     mirFail "doBVBranch: improper switch!"
@@ -1445,7 +1446,7 @@ transTerminator t _tr =
 initialValue :: HasCallStack => M.Ty -> MirGenerator h s ret (Maybe (MirExp s))
 initialValue (CTyInt512) =
     let w = knownNat :: NatRepr 512 in
-    return $ Just $ MirExp (C.BVRepr w) (S.app (E.BVLit w 0))
+    return $ Just $ MirExp (C.BVRepr w) (S.app (E.BVLit w (BV.mkBV w 0)))
 initialValue (CTyVector t) = do
     tyToReprCont t $ \ tr ->
       return $ Just (MirExp (C.VectorRepr tr) (S.app $ E.VectorLit tr V.empty))
@@ -1457,7 +1458,7 @@ initialValue (CTyArray t) = case tyToRepr t of
     _ -> error $ "can't initialize array of " ++ show t ++ " (expected BVRepr)"
 initialValue ty@(CTyBv _sz)
   | Some (C.BVRepr w) <- tyToRepr ty
-  = return $ Just $ MirExp (C.BVRepr w) $ S.app $ E.BVLit w 0
+  = return $ Just $ MirExp (C.BVRepr w) $ S.app $ E.BVLit w (BV.mkBV w 0)
   | otherwise = mirFail $ "Bv type " ++ show ty ++ " does not have BVRepr"
 initialValue M.TyBool       = return $ Just $ MirExp C.BoolRepr (S.false)
 initialValue (M.TyTuple []) = return $ Just $ MirExp C.UnitRepr (R.App E.EmptyApp)
@@ -1466,10 +1467,10 @@ initialValue (M.TyTuple tys) = do
     return $ Just $ buildTupleMaybe tys mexps
 initialValue (M.TyInt M.USize) = return $ Just $ MirExp IsizeRepr (R.App $ isizeLit 0)
 initialValue (M.TyInt sz)      = baseSizeToNatCont sz $ \w ->
-    return $ Just $ MirExp (C.BVRepr w) (S.app (E.BVLit w 0))
+    return $ Just $ MirExp (C.BVRepr w) (S.app (E.BVLit w (BV.mkBV w 0)))
 initialValue (M.TyUint M.USize) = return $ Just $ MirExp UsizeRepr (R.App $ usizeLit 0)
 initialValue (M.TyUint sz)      = baseSizeToNatCont sz $ \w ->
-    return $ Just $ MirExp (C.BVRepr w) (S.app (E.BVLit w 0))
+    return $ Just $ MirExp (C.BVRepr w) (S.app (E.BVLit w (BV.mkBV w 0)))
 initialValue (M.TyArray t size) = do
     mv <- initialValue t 
     case mv of
@@ -1540,7 +1541,7 @@ initialValue (M.TyRef t M.Mut)
 -}
 initialValue M.TyChar = do
     let w = (knownNat :: NatRepr 32)
-    return $ Just $ MirExp (C.BVRepr w) (S.app (E.BVLit w 0))
+    return $ Just $ MirExp (C.BVRepr w) (S.app (E.BVLit w (BV.mkBV w 0)))
 initialValue (M.TyClosure tys) = do
     mexps <- mapM initialValue tys
     return $ Just $ buildTupleMaybe tys mexps

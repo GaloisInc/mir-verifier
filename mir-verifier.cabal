@@ -23,6 +23,7 @@ library
                  text,
                  time,
                  unordered-containers,
+                 bv-sized >= 1 && < 1.1,
                  crucible,
                  parameterized-utils >= 1.0.8,
                  containers,

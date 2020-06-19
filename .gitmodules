@@ -7,3 +7,6 @@
 [submodule "deps/aig"]
 	path = deps/aig
 	url = https://github.com/GaloisInc/aig
+[submodule "deps/what4"]
+	path = deps/what4
+	url = https://github.com/GaloisInc/what4.git

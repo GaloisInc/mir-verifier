@@ -19,6 +19,7 @@ import Control.Monad.IO.Class
 import Control.Monad.State (get)
 import Control.Monad.Trans (lift)
 import Control.Monad.Trans.Maybe (MaybeT(..))
+import qualified Data.BitVector.Sized as BV
 
 import qualified Data.ByteString as BS
 import qualified Data.Char as Char
@@ -91,7 +92,7 @@ getString (Empty :> RV mirPtr :> RV lenExpr) = runMaybeT $ do
     state <- get
     len <- readBV lenExpr
     bytes <- forM [0 .. len - 1] $ \i -> do
-        iExpr <- liftIO $ bvLit sym knownRepr i
+        iExpr <- liftIO $ bvLit sym knownRepr (BV.mkBV knownNat i)
         elemPtr <- liftIO $ mirRef_offsetWrapIO sym knownRepr mirPtr iExpr
         bExpr <- liftIO $ readMirRefIO state sym elemPtr
         b <- readBV bExpr
@@ -99,7 +100,8 @@ getString (Empty :> RV mirPtr :> RV lenExpr) = runMaybeT $ do
     return $ Text.decodeUtf8 $ BS.pack bytes
 
   where
-    readBV = MaybeT . return . asUnsignedBV
+    toUnsigned v = BV.asUnsigned <$> asBV v
+    readBV = MaybeT . return . toUnsigned
 
 data SomeOverride p sym where
   SomeOverride :: CtxRepr args -> TypeRepr ret -> Override p sym MIR args ret -> SomeOverride p sym
@@ -214,17 +216,17 @@ regEval sym baseEval tpr v = go tpr v
 
         len' <- go UsizeRepr len
         let lenBV = fromMaybe (error "regEval produced non-concrete BV") $
-                asUnsignedBV len'
+                (BV.asUnsigned <$> asBV len')
 
         vals <- forM [0 .. lenBV - 1] $ \i -> do
-            i' <- liftIO $ bvLit sym knownRepr i
+            i' <- liftIO $ bvLit sym knownRepr (BV.mkBV knownNat i)
             ptr' <- liftIO $ mirRef_offsetIO sym tpr' ptr i'
             val <- liftIO $ readMirRefIO state sym ptr'
             go tpr' val
 
         let vec = MirVector_Vector $ V.fromList vals
         let vecRef = newConstMirRef (MirVectorRepr tpr') vec
-        ptr <- liftIO $ subindexMirRefIO sym tpr' vecRef =<< bvLit sym knownRepr 0
+        ptr <- liftIO $ subindexMirRefIO sym tpr' vecRef =<< bvLit sym knownRepr (BV.mkBV knownNat 0)
         return $ Empty :> RV ptr :> RV len'
 
     go (FloatRepr fi) v = pure v
@@ -406,7 +408,7 @@ bindFn _symOnline fn cfg =
       fromList [ override "crucible::one" Empty (BVRepr (knownNat @ 8)) $
                  do h <- printHandle <$> getContext
                     liftIO (hPutStrLn h "Hello, I'm an override")
-                    v <- liftIO $ bvLit (s :: sym) knownNat 1
+                    v <- liftIO $ bvLit (s :: sym) knownNat (BV.mkBV knownNat 1)
                     return v
                , symb_bv "crucible::symbolic::symbolic_u8"  (knownNat @ 8)
                , symb_bv "crucible::symbolic::symbolic_u16" (knownNat @ 16)
@@ -425,8 +427,8 @@ bindFn _symOnline fn cfg =
                                 (pure . Text.unpack)
                                 =<< getString (regValue srcArg)
                        file <- maybe (fail "not a constant filename string") pure =<< getString (regValue fileArg)
-                       line <- maybe (fail "not a constant line number") pure (asUnsignedBV (regValue lineArg))
-                       col <- maybe (fail "not a constant column number") pure (asUnsignedBV (regValue colArg))
+                       line <- maybe (fail "not a constant line number") pure (BV.asUnsigned <$> asBV (regValue lineArg))
+                       col <- maybe (fail "not a constant column number") pure (BV.asUnsigned <$> asBV (regValue colArg))
                        let locStr = Text.unpack file <> ":" <> show line <> ":" <> show col
                        let reason = AssertFailureSimError ("MIR assertion at " <> locStr <> ":\n\t" <> src) ""
                        liftIO $ assert s (regValue c) reason
@@ -440,8 +442,8 @@ bindFn _symOnline fn cfg =
                                 (pure . Text.unpack)
                                 =<< getString (regValue srcArg)
                        file <- maybe (fail "not a constant filename string") pure =<< getString (regValue fileArg)
-                       line <- maybe (fail "not a constant line number") pure (asUnsignedBV (regValue lineArg))
-                       col <- maybe (fail "not a constant column number") pure (asUnsignedBV (regValue colArg))
+                       line <- maybe (fail "not a constant line number") pure (BV.asUnsigned <$> asBV (regValue lineArg))
+                       col <- maybe (fail "not a constant column number") pure (BV.asUnsigned <$> asBV (regValue colArg))
                        let locStr = Text.unpack file <> ":" <> show line <> ":" <> show col
                        let reason = AssumptionReason loc $ "Assumption \n\t" <> src <> "\nfrom " <> locStr
                        liftIO $ addAssumption s (LabeledPred (regValue c) reason)
