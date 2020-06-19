@@ -167,7 +167,7 @@ runTests (cruxOpts, mirOpts) = do
     -- for tests that failed.
 
     let simTest :: forall sym. (C.IsSymInterface sym, Crux.Logs) =>
-            Maybe (Crux.SomeOnlineSolver sym) -> DefId -> Fun sym MIR Ctx.EmptyCtx C.UnitType
+            Maybe (Crux.SomeOnlineSolver sym) -> DefId -> Fun Model sym MIR Ctx.EmptyCtx C.UnitType
         simTest symOnline fnName = do
             when (not $ printResultOnly mirOpts) $
                 liftIO $ output $ "test " ++ show fnName ++ ": "
