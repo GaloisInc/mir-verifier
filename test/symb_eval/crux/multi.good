@@ -6,7 +6,7 @@ failures:
 
 ---- multi/3a1fbbbh::fail1[0] counterexamples ----
 Failure for attempt to add with overflow
-in multi/3a1fbbbh::fail1[0] at test/symb_eval/crux/multi.rs:8:22
+in multi/3a1fbbbh::fail1[0] at test/symb_eval/crux/multi.rs:8:22: 8:27
 
 ---- multi/3a1fbbbh::fail2[0] counterexamples ----
 Failure for panicking::begin_panic, called from multi/3a1fbbbh::fail2[0]
@@ -15,7 +15,7 @@ in multi/3a1fbbbh::fail2[0] at internal
 ---- multi/3a1fbbbh::fail3[0] counterexamples ----
 Failure for MIR assertion at test/symb_eval/crux/multi.rs:20:5:
 	x == 0
-in multi/3a1fbbbh::assert_zero[0] at ./lib/crucible/lib.rs:40:41
+in multi/3a1fbbbh::assert_zero[0] at ./lib/crucible/lib.rs:40:41: 40:58
 
 [Crux] Goal status:
 [Crux]   Total: 4
