@@ -1085,55 +1085,61 @@ ifteAny e x y = do
   y_id <- G.defineBlockLabel y
   G.branch e x_id y_id
 
-transSwitch :: MirExp s -> -- thing switching over
-    [Integer] -> -- switch comparisons
-        [M.BasicBlockInfo] -> -- jumps
-                MirGenerator h s ret a
-transSwitch _ [] [targ] = jumpToBlock targ
-transSwitch (MirExp (C.BoolRepr) e) [v] [t1,t2] =
-    if v == 1 then
-              doBoolBranch e t1 t2
-    else
-              doBoolBranch e t2 t1
-transSwitch (MirExp (C.IntegerRepr) e) vs ts =
-    doIntBranch e vs ts
-transSwitch (MirExp (C.BVRepr w) e) vs ts =
-    doBVBranch w e vs ts
+transSwitch ::
+    Text ->         -- source location
+    MirExp s ->     -- thing switching over
+    [Integer] ->    -- switch comparisons
+    [M.BasicBlockInfo] -> -- jumps
+    MirGenerator h s ret a
+transSwitch _pos _ [] [targ] = jumpToBlock targ
+transSwitch pos (MirExp (C.BoolRepr) e) [v] [t1,t2] =
+    case v of
+        0 -> doBoolBranch pos e t2 t1
+        1 -> doBoolBranch pos e t1 t2
+        _ -> mirFail $ "invalid BoolRepr constant " ++ show v ++ " in switch"
+transSwitch pos (MirExp (C.IntegerRepr) e) vs ts =
+    doIntBranch pos e vs ts
+transSwitch pos (MirExp (C.BVRepr w) e) vs ts =
+    doBVBranch pos w e vs ts
+transSwitch _pos (MirExp f _e) _ _  = mirFail $ "bad switch: " ++ show f
 
-transSwitch (MirExp f _e) _ _  = mirFail $ "bad switch: " ++ show f
-
-doBoolBranch :: R.Expr MIR s C.BoolType -> M.BasicBlockInfo -> M.BasicBlockInfo -> MirGenerator h s ret a
-doBoolBranch e t f = do
+doBoolBranch :: Text -> R.Expr MIR s C.BoolType -> M.BasicBlockInfo -> M.BasicBlockInfo -> MirGenerator h s ret a
+doBoolBranch pos e t f = do
+    setPosition pos
     lm <- use labelMap
     case (Map.lookup t lm, Map.lookup f lm) of
       (Just tb, Just fb) -> G.branch e tb fb
       _ -> mirFail "bad lookup on boolbranch"
 
 -- nat branch: branch by iterating through list
-doIntBranch :: R.Expr MIR s C.IntegerType -> [Integer] -> [M.BasicBlockInfo] -> MirGenerator h s ret a
-doIntBranch _ _ [i] = do
+doIntBranch :: Text -> R.Expr MIR s C.IntegerType -> [Integer] -> [M.BasicBlockInfo] -> MirGenerator h s ret a
+doIntBranch pos _ _ [i] = do
+    setPosition $ pos <> " #0"
     lm <- use labelMap
     case (Map.lookup i lm) of
       Just lab -> G.jump lab
       _ -> mirFail "bad jump"
-doIntBranch e (v:vs) (i:is) = do
+doIntBranch pos e (v:vs) (i:is) = do
+    setPosition $ pos <> " #" <> Text.pack (show (length is)) <> " =" <> Text.pack (show v)
     let test = S.app $ E.IntEq e $ S.app $ E.IntLit v
-    ifteAny test (jumpToBlock i) (doIntBranch e vs is)
-doIntBranch _ _ _ =
+    ifteAny test (jumpToBlock i) (doIntBranch pos e vs is)
+doIntBranch _ _ _ _ =
     mirFail "doIntBranch: improper switch!"
 
 -- bitvector branch: branch by iterating through list
-doBVBranch :: (1 <= w) => NatRepr w -> R.Expr MIR s (C.BVType w) ->
+doBVBranch :: (1 <= w) => Text -> NatRepr w -> R.Expr MIR s (C.BVType w) ->
     [Integer] -> [M.BasicBlockInfo] -> MirGenerator h s ret a
-doBVBranch w _ _ [i] = do
+doBVBranch pos w _ _ [i] = do
+    setPosition $ pos <> " #0"
     lm <- use labelMap
     case (Map.lookup i lm) of
       Just lab -> G.jump lab
       _ -> mirFail "bad jump"
-doBVBranch w e (v:vs) (i:is) = do
+doBVBranch pos w e (v:vs) (i:is) = do
+    setPosition $ pos <> " #" <> Text.pack (show (length is)) <> " =" <> Text.pack (show v)
     let test = S.app $ E.BVEq w e $ S.app $ E.BVLit w v
-    ifteAny test (jumpToBlock i) (doBVBranch w e vs is)
-doBVBranch _ _ _ _ =
+    ifteAny test (jumpToBlock i) (doBVBranch pos w e vs is)
+doBVBranch _ _ _ _ _ =
     mirFail "doBVBranch: improper switch!"
 
 jumpToBlock :: M.BasicBlockInfo -> MirGenerator h s ret a
@@ -1321,9 +1327,9 @@ doCall funid cargs cdest retRepr = do
 transTerminator :: HasCallStack => M.Terminator -> C.TypeRepr ret -> MirGenerator h s ret a
 transTerminator (M.Goto bbi) _ =
     jumpToBlock bbi
-transTerminator (M.SwitchInt swop _swty svals stargs _pos) _ | all Maybe.isJust svals = do
+transTerminator (M.SwitchInt swop _swty svals stargs spos) _ | all Maybe.isJust svals = do
     s <- evalOperand swop
-    transSwitch s (Maybe.catMaybes svals) stargs
+    transSwitch spos s (Maybe.catMaybes svals) stargs
 transTerminator (M.Return) tr =
     doReturn tr
 transTerminator (M.DropAndReplace dlv dop dtarg _ dropFn) _ = do
