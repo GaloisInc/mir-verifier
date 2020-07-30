@@ -1,0 +1,10 @@
+test coverage_try/3a1fbbbh::crux_test[0]: returned Symbolic BV, [Crux] Attempting to prove verification conditions.
+ok
+
+[Crux] Goal status:
+[Crux]   Total: 16
+[Crux]   Proved: 16
+[Crux]   Disproved: 0
+[Crux]   Incomplete: 0
+[Crux]   Unknown: 0
+[Crux] Overall status: Valid.
