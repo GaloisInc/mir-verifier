@@ -1,7 +1,11 @@
 extern crate crucible;
 use crucible::*;
 
-enum E { A, B, C }
+enum E {
+    A = 10,
+    B = 20,
+    C = 30,
+}
 
 #[cfg_attr(crux, crux_test)]
 fn crux_test() -> i32 {
