@@ -1,5 +1,4 @@
-test coverage_match/3a1fbbbh::crux_test[0]: returned Symbolic BV, [Crux] Attempting to prove verification conditions.
-ok
+test coverage_match/3a1fbbbh::crux_test[0]: returned Symbolic BV, ok
 
 [Crux] Goal status:
 [Crux]   Total: 1
